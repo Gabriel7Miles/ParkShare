@@ -1,27 +1,80 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
-/node_modules
+# ========================================
+# 📦 Dependencies
+# ========================================
+node_modules/
+.pnpm-store/
+.pnp/
+.pnp.js
 
-# next.js
-/.next/
-/out/
+# ========================================
+# ⚙️ Next.js Build Artifacts
+# ========================================
+.next/
+out/
+build/
+dist/
+.cache/
+.next-static/
 
-# production
-/build
+# ========================================
+# 🧩 Environment & Config
+# ========================================
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*
+.vercel/
+firebase-debug.log
+firestore-debug.log
+storage-debug.log
 
-# debug
+# ========================================
+# 🧪 Logs & Debug Files
+# ========================================
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+debug.log
 
-# env files
-.env*
+# ========================================
+# 🖼️ OS / Editor / Misc
+# ========================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+*.bak
 
-# vercel
-.vercel
-
-# typescript
+# ========================================
+# 🧠 TypeScript
+# ========================================
 *.tsbuildinfo
 next-env.d.ts
+
+# ========================================
+# 🧰 Testing / Coverage
+# ========================================
+coverage/
+.jest/
+jest.config.js
+*.lcov
+
+# ========================================
+# 🧾 Local IDE / Editor Config
+# ========================================
+.vscode/
+.idea/
+*.code-workspace
+
+# ========================================
+# 🔥 Optional - Build or Export Artifacts
+# ========================================
+public/static/
+public/uploads/
+uploads/
