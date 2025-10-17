@@ -1,74 +1,130 @@
+// app/host/dashboard/page.tsx
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { HostDashboardNav } from "@/components/host/dashboard-nav"
 import { SpaceCard } from "@/components/host/space-card"
-import { getHostSpaces, deleteParkingSpace } from "@/lib/firebase/host"
+import { 
+  getHostSpaces, 
+  deleteParkingSpace 
+} from "@/lib/firebase/host"
 import type { ParkingSpace } from "@/lib/types/parking"
 import { useAuth } from "@/contexts/auth-context"
+import { useFirebase } from "@/contexts/firebase-context"
 import { useRouter } from "next/navigation"
-import { Loader2, Plus } from "lucide-react"
+import { Loader2, Plus, Users, Car } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
+import { Badge } from "@/components/ui/badge"
 
 export default function HostDashboard() {
   const [spaces, setSpaces] = useState<ParkingSpace[]>([])
   const [loading, setLoading] = useState(true)
+  const [statsLoading, setStatsLoading] = useState(true)
   const { user, userProfile, loading: authLoading } = useAuth()
+  const { db, storage } = useFirebase()
   const router = useRouter()
   const { toast } = useToast()
 
+  // Auth redirect
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login")
-    } else if (userProfile?.role === "driver") {
-      router.push("/driver/dashboard")
+    if (!authLoading) {
+      if (!user) {
+        router.push("/login")
+      } else if (userProfile?.role === "driver") {
+        router.push("/driver/dashboard")
+      }
     }
   }, [user, userProfile, authLoading, router])
 
+  // Load spaces with real-time updates
   useEffect(() => {
-    if (user) {
+    if (user && db && storage && userProfile?.role === "host") {
       loadSpaces()
-    }
-  }, [user])
 
-  const loadSpaces = async () => {
-    if (!user) return
+      const handleSpaceCreated = () => {
+        console.log("[Host Dashboard] New space detected, refreshing...")
+        loadSpaces()
+      }
+      
+      window.addEventListener('space:created', handleSpaceCreated)
+      window.addEventListener('focus', loadSpaces)
+
+      return () => {
+        window.removeEventListener('space:created', handleSpaceCreated)
+        window.removeEventListener('focus', loadSpaces)
+      }
+    }
+  }, [user, db, storage, userProfile])
+
+  const loadSpaces = useCallback(async () => {
+    if (!user || !db || !storage) return
+    
     setLoading(true)
     try {
-      const hostSpaces = await getHostSpaces(user.uid)
+      console.log("[Host Dashboard] Loading spaces for:", user.uid)
+      const hostSpaces = await getHostSpaces(db, user.uid)
       setSpaces(hostSpaces)
+      console.log(`[Host Dashboard] Loaded ${hostSpaces.length} spaces`)
     } catch (error) {
-      console.error("[v0] Error loading spaces:", error)
+      console.error("[Host Dashboard] Error loading spaces:", error)
+      toast({
+        title: "Error Loading Spaces",
+        description: "Failed to load your parking spaces",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
+      setStatsLoading(false)
     }
-  }
+  }, [user, db, storage, toast])
 
   const handleDelete = async (spaceId: string) => {
-    if (!confirm("Are you sure you want to delete this space?")) return
+    if (!confirm("Are you sure you want to delete this space? This will also delete all associated images. This action cannot be undone.")) return
 
-    try {
-      await deleteParkingSpace(spaceId)
-      setSpaces(spaces.filter((s) => s.id !== spaceId))
-      toast({
-        title: "Space deleted",
-        description: "Your parking space has been removed",
-      })
-    } catch (error: any) {
+    if (!db || !storage) {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Database or storage not available",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      console.log(`[Host Dashboard] Deleting space ${spaceId} with images...`)
+      await deleteParkingSpace(db, storage, spaceId)
+      setSpaces(prev => prev.filter(s => s.id !== spaceId))
+      toast({
+        title: "✅ Space Deleted Successfully",
+        description: "Your parking space and all images have been removed.",
+      })
+      
+      window.dispatchEvent(new CustomEvent('space:deleted', { detail: { spaceId } }))
+    } catch (error: any) {
+      console.error("[Host Dashboard] Delete error:", error)
+      toast({
+        title: "❌ Delete Failed",
+        description: error.message || "Failed to delete space and images",
         variant: "destructive",
       })
     }
   }
 
-  if (authLoading || !user || userProfile?.role !== "host") {
+  // Calculate stats
+  const availableSpaces = spaces.filter(s => s.availability === 'available').length
+  const occupiedSpaces = spaces.filter(s => s.availability === 'occupied').length
+
+  // Loading or auth check
+  if (authLoading || !user || !db || !storage || userProfile?.role !== "host") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-success mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
       </div>
     )
   }
@@ -76,15 +132,18 @@ export default function HostDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <HostDashboardNav />
-
+      
       <div className="pt-16">
-        <div className="container mx-auto p-4">
-          <div className="flex items-center justify-between mb-6">
+        <div className="container mx-auto p-4 max-w-7xl">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold mb-2 font-sans">My Parking Spaces</h1>
-              <p className="text-muted-foreground">Manage your listed parking spaces</p>
+              <h1 className="text-3xl font-bold mb-2">My Parking Spaces</h1>
+              <p className="text-muted-foreground">
+                Manage your {spaces.length} listed parking space{spaces.length !== 1 ? 's' : ''}
+              </p>
             </div>
-            <Link href="/host/add-space">
+            <Link href="/host/add-space" className="no-underline">
               <Button className="gap-2 bg-success hover:bg-success/90">
                 <Plus className="w-4 h-4" />
                 Add New Space
@@ -92,18 +151,87 @@ export default function HostDashboard() {
             </Link>
           </div>
 
+          {/* Stats Cards - Simplified to 3 cards */}
+          {statsLoading ? (
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
+              {[...Array(3)].map((_, i) => (
+                <Card key={i}>
+                  <CardContent className="p-6">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
+              {/* Total Spaces */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                      <Plus className="w-5 h-5 text-primary" />
+                    </div>
+                    <Badge className="text-xs">Total</Badge>
+                  </div>
+                  <div className="text-2xl font-bold text-foreground">{spaces.length}</div>
+                  <div className="text-sm text-muted-foreground">Parking Spaces</div>
+                </CardContent>
+              </Card>
+
+              {/* Available Spaces */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-10 h-10 bg-success/10 rounded-lg flex items-center justify-center">
+                      <Users className="w-5 h-5 text-success" />
+                    </div>
+                    <Badge variant="default" className="bg-success text-success-foreground">Available</Badge>
+                  </div>
+                  <div className="text-2xl font-bold text-success">{availableSpaces}</div>
+                  <div className="text-sm text-muted-foreground">Ready to Book</div>
+                </CardContent>
+              </Card>
+
+              {/* Occupied Spaces */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-10 h-10 bg-destructive/10 rounded-lg flex items-center justify-center">
+                      <Car className="w-5 h-5 text-destructive" />
+                    </div>
+                    <Badge variant="destructive">Occupied</Badge>
+                  </div>
+                  <div className="text-2xl font-bold text-destructive">{occupiedSpaces}</div>
+                  <div className="text-sm text-muted-foreground">Currently Booked</div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Spaces List */}
           {loading ? (
             <div className="flex items-center justify-center h-96">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <div className="text-center">
+                <Loader2 className="w-8 h-8 animate-spin text-success mx-auto mb-4" />
+                <span className="text-muted-foreground">Loading your spaces with images...</span>
+              </div>
             </div>
           ) : spaces.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg">
+            <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg border-muted bg-muted/20 p-8 text-center">
               <Plus className="w-16 h-16 text-muted-foreground mb-4" />
-              <p className="text-lg font-medium mb-2">No parking spaces yet</p>
-              <p className="text-sm text-muted-foreground mb-4">Add your first space to start earning</p>
-              <Link href="/host/add-space">
-                <Button className="bg-success hover:bg-success/90">Add Your First Space</Button>
+              <h3 className="text-xl font-semibold mb-2">No Parking Spaces Yet</h3>
+              <p className="text-muted-foreground mb-6 max-w-md">
+                Start earning by listing your first parking space with images. Drivers are waiting for secure spots near them!
+              </p>
+              <Link href="/host/add-space" className="no-underline">
+                <Button className="bg-success hover:bg-success/90 gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add Your First Space
+                </Button>
               </Link>
+              <p className="text-xs text-muted-foreground mt-4">
+                💡 Tip: Upload clear images of your parking area to attract more bookings
+              </p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -111,9 +239,9 @@ export default function HostDashboard() {
                 <SpaceCard
                   key={space.id}
                   space={space}
-                  onEdit={(space) => router.push(`/host/edit-space/${space.id}`)}
+                  onEdit={() => router.push(`/host/edit-space/${space.id}`)}
                   onDelete={handleDelete}
-                  onView={(space) => router.push(`/host/space/${space.id}`)}
+                  onView={() => router.push(`/host/space/${space.id}`)}
                 />
               ))}
             </div>

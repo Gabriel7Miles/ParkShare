@@ -11,6 +11,13 @@ import {
   serverTimestamp,
   type Firestore,
 } from "firebase/firestore"
+import { 
+  ref, 
+  uploadBytes, 
+  getDownloadURL, 
+  deleteObject,
+  type FirebaseStorage 
+} from "firebase/storage"
 import type { ParkingSpace, Booking } from "@/lib/types/parking"
 
 // ✅ UTILITY: Remove undefined/null values for Firestore
@@ -44,23 +51,44 @@ export async function getHostSpaces(db: Firestore, hostId: string): Promise<Park
   }
 }
 
+// ✅ UPDATED: Create parking space with image uploads to Storage
 export async function createParkingSpace(
   db: Firestore,
-  spaceData: Omit<ParkingSpace, "id" | "createdAt">,
+  storage: FirebaseStorage,
+  spaceData: Omit<ParkingSpace, "id" | "createdAt"> & { images?: File[] }
 ): Promise<string> {
   try {
     console.log('[v0] Creating parking space for host:', spaceData.hostId)
     
-    // ✅ CLEAN DATA: Remove undefined values
-    const cleanData = cleanFirestoreData(spaceData)
-    
+    // Create document first to get spaceId
     const spacesRef = collection(db, "parkingSpaces")
+    const cleanData = cleanFirestoreData({ ...spaceData, images: [] }) // Temp empty images
     const docRef = await addDoc(spacesRef, {
       ...cleanData,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })
-    
+
+    // Upload images if present
+    let imageUrls: string[] = []
+    if (spaceData.images && spaceData.images.length > 0) {
+      console.log(`[v0] Uploading ${spaceData.images.length} images for space ${docRef.id}`)
+      for (let i = 0; i < spaceData.images.length; i++) {
+        const file = spaceData.images[i]
+        const storageRef = ref(storage, `parkingSpaces/${docRef.id}/images/image_${i + 1}.${file.name.split('.').pop()}`)
+        await uploadBytes(storageRef, file)
+        const url = await getDownloadURL(storageRef)
+        imageUrls.push(url)
+        console.log('[v0] Uploaded image:', url)
+      }
+
+      // Update document with image URLs
+      await updateDoc(docRef, {
+        images: imageUrls,
+        updatedAt: serverTimestamp(),
+      })
+    }
+
     console.log('[v0] Parking space created with ID:', docRef.id)
     return docRef.id
   } catch (error: any) {
@@ -75,7 +103,6 @@ export async function updateParkingSpace(
   updates: Partial<ParkingSpace>,
 ): Promise<void> {
   try {
-    // ✅ CLEAN UPDATES
     const cleanUpdates = cleanFirestoreData(updates)
     
     const spaceRef = doc(db, "parkingSpaces", spaceId)
@@ -90,11 +117,36 @@ export async function updateParkingSpace(
   }
 }
 
-export async function deleteParkingSpace(db: Firestore, spaceId: string): Promise<void> {
+// ✅ UPDATED: Delete parking space and its images
+export async function deleteParkingSpace(
+  db: Firestore,
+  storage: FirebaseStorage,
+  spaceId: string
+): Promise<void> {
   try {
     const spaceRef = doc(db, "parkingSpaces", spaceId)
-    await deleteDoc(spaceRef)
-    console.log('[v0] Parking space deleted:', spaceId)
+    const spaceSnap = await getDoc(spaceRef)
+    
+    if (spaceSnap.exists()) {
+      const spaceData = spaceSnap.data() as ParkingSpace
+      const imageUrls = spaceData.images || []
+      
+      // Delete images from storage
+      for (const url of imageUrls) {
+        try {
+          const imageRef = ref(storage, url)
+          await deleteObject(imageRef)
+          console.log('[v0] Deleted image:', url)
+        } catch (deleteError) {
+          console.error('[v0] Failed to delete image:', deleteError)
+        }
+      }
+      
+      await deleteDoc(spaceRef)
+      console.log('[v0] Parking space deleted:', spaceId)
+    } else {
+      console.log('[v0] Space not found for deletion:', spaceId)
+    }
   } catch (error) {
     console.error('[v0] Error deleting parking space:', error)
     throw error

@@ -2,7 +2,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useFirebase } from "@/contexts/firebase-context"
 import { createParkingSpace } from "@/lib/firebase/host"
@@ -15,11 +15,13 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Loader2, Upload, X, Calendar } from "lucide-react"
+import { Loader2, Upload, X, Calendar, MapPin, AlertCircle } from "lucide-react"
 
 export function AddSpaceForm() {
   const [loading, setLoading] = useState(false)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]) // ✅ Store File[]
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [location, setLocation] = useState<{ lat: number; lng: number }>({ lat: -1.286389, lng: 36.817223 })
   const [availabilityRanges, setAvailabilityRanges] = useState<{ startDate: string; endDate: string }[]>([
     { startDate: "", endDate: "" },
   ])
@@ -37,10 +39,14 @@ export function AddSpaceForm() {
   })
 
   const { user, userProfile } = useAuth()
-  const { db } = useFirebase()
+  const { db, storage } = useFirebase()
   const { toast } = useToast()
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const MAX_IMAGES = 5
+  const MIN_IMAGES = 1
+  const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
   const availableFeatures = [
     "Covered",
     "24/7 Access",
@@ -53,24 +59,59 @@ export function AddSpaceForm() {
 
   const vehicleTypeOptions = ["sedan", "suv", "truck", "motorcycle", "van"]
 
+  // ✅ UPDATED: Handle image upload with limits and validation
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
+    const files = Array.from(e.target.files || [])
+    
+    if (selectedFiles.length + files.length > MAX_IMAGES) {
+      toast({
+        title: "Image Limit Exceeded",
+        description: `You can only upload up to ${MAX_IMAGES} images. Currently have ${selectedFiles.length}.`,
+        variant: "destructive",
+      })
+      return
+    }
 
-    const newPreviews: string[] = []
-    Array.from(files).forEach((file) => {
+    const validFiles: File[] = []
+    const validPreviews: string[] = []
+
+    files.forEach(file => {
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid File",
+          description: `${file.name} is not an image file`,
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        toast({
+          title: "File Too Large",
+          description: `${file.name} exceeds 5MB limit`,
+          variant: "destructive",
+        })
+        return
+      }
+
       const reader = new FileReader()
       reader.onloadend = () => {
-        newPreviews.push(reader.result as string)
-        if (newPreviews.length === files.length) {
-          setImagePreviews((prev) => [...prev, ...newPreviews])
+        validPreviews.push(reader.result as string)
+        validFiles.push(file)
+        
+        if (validFiles.length === files.length) {
+          setSelectedFiles(prev => [...prev, ...validFiles])
+          setImagePreviews(prev => [...prev, ...validPreviews])
         }
       }
       reader.readAsDataURL(file)
     })
+
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const removeImage = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
     setImagePreviews((prev) => prev.filter((_, i) => i !== index))
   }
 
@@ -106,11 +147,43 @@ export function AddSpaceForm() {
     }))
   }
 
+  // ✅ GEOLOCATION - Get user's location
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "Location not supported",
+        description: "Please enter address manually",
+        variant: "destructive",
+      })
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        })
+        toast({
+          title: "Location detected",
+          description: "Using your current location",
+        })
+      },
+      (error) => {
+        console.warn("Geolocation error:", error)
+        toast({
+          title: "Location access denied",
+          description: "Please enter address manually",
+        })
+      }
+    )
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     // Validation
-    if (!user || !userProfile || !db) {
+    if (!user || !userProfile || !db || !storage) {
       toast({
         title: "Error",
         description: "Please log in and wait for profile to load",
@@ -119,10 +192,19 @@ export function AddSpaceForm() {
       return
     }
 
+    if (selectedFiles.length < MIN_IMAGES) {
+      toast({
+        title: "Images Required",
+        description: "Please upload at least 1 image of your parking space",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (!formData.title || !formData.description || !formData.address || !formData.pricePerHour || 
         formData.vehicleTypes.length === 0) {
       toast({
-        title: "Error",
+        title: "Validation Error",
         description: "Please fill all required fields and select at least one vehicle type",
         variant: "destructive",
       })
@@ -140,18 +222,17 @@ export function AddSpaceForm() {
           endDate: new Date(range.endDate),
         }))
 
-      // ✅ FIXED: Clean data - exclude undefined values
       const baseData = {
         hostId: user.uid,
         hostName: userProfile.displayName || user.email?.split('@')[0] || 'Host',
         title: formData.title,
         description: formData.description,
         address: formData.address,
-        location: { lat: 40.7128, lng: -74.006 },
+        location, // ✅ Use detected location
         pricePerHour: Number.parseFloat(formData.pricePerHour),
         availability: "available" as const,
         features: formData.features,
-        images: imagePreviews,
+        images: selectedFiles, // ✅ Pass File[]
         rating: 0,
         reviewCount: 0,
         spaceType: formData.spaceType,
@@ -159,7 +240,6 @@ export function AddSpaceForm() {
         numberOfSpaces: Number.parseInt(formData.numberOfSpaces) || 1,
       }
 
-      // ✅ ONLY ADD OPTIONAL FIELDS IF THEY EXIST
       const optionalFields = {
         ...(userProfile.phoneNumber && { hostPhone: userProfile.phoneNumber }),
         ...(formData.pricePerDay && { pricePerDay: Number.parseFloat(formData.pricePerDay) }),
@@ -169,19 +249,26 @@ export function AddSpaceForm() {
 
       const spaceData = { ...baseData, ...optionalFields }
       
-      console.log('[v0] Creating space with clean data:', {
+      console.log('[v0] Creating space with data:', {
         ...spaceData,
+        images: spaceData.images.length,
+        location: `${spaceData.location.lat}, ${spaceData.location.lng}`,
         hostPhone: spaceData.hostPhone ? 'present' : 'excluded',
       })
       
-      const spaceId = await createParkingSpace(db, spaceData)
+      const spaceId = await createParkingSpace(db, storage, spaceData)
       
       console.log('[v0] Space created successfully with ID:', spaceId)
       
       toast({
-        title: "🎉 Space added successfully!",
-        description: `Your parking space "${formData.title}" is now live!`,
+        title: "🎉 Space Added Successfully!",
+        description: `Your parking space "${formData.title}" is now live and visible to drivers!`,
       })
+
+      // ✅ CRITICAL: Trigger real-time refresh across all dashboards
+      window.dispatchEvent(new CustomEvent('space:created', { 
+        detail: { spaceId } 
+      }))
 
       // Reset form
       setFormData({
@@ -196,15 +283,19 @@ export function AddSpaceForm() {
         vehicleTypes: [],
         numberOfSpaces: "1",
       })
+      setSelectedFiles([])
       setImagePreviews([])
       setAvailabilityRanges([{ startDate: "", endDate: "" }])
       
+      // Navigate with Next.js revalidation
       router.push("/host/dashboard")
+      router.refresh()
+      
     } catch (error: any) {
       console.error('[v0] Error creating parking space:', error)
       toast({
-        title: "Failed to add space",
-        description: error.message || "An unexpected error occurred",
+        title: "Failed to Add Space",
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -213,29 +304,54 @@ export function AddSpaceForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
+    <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Add New Parking Space</CardTitle>
-          <CardDescription>Fill in the details to list your parking space</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="w-6 h-6" />
+            Add New Parking Space
+          </CardTitle>
+          <CardDescription>List your space and start earning with drivers in your area</CardDescription>
         </CardHeader>
+        
         <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="title">Space Title *</Label>
-            <Input
-              id="title"
-              placeholder="e.g., Downtown Garage - Covered Parking"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              required
-            />
+          {/* Basic Info */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="title">Space Title *</Label>
+              <Input
+                id="title"
+                placeholder="e.g., Secure Downtown Garage - Covered Parking"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Space Type *</Label>
+              <Select
+                value={formData.spaceType}
+                onValueChange={(value) => setFormData({ ...formData, spaceType: value as any })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="driveway">Driveway</SelectItem>
+                  <SelectItem value="garage">Garage</SelectItem>
+                  <SelectItem value="lot">Parking Lot</SelectItem>
+                  <SelectItem value="street">Street Parking</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="description">Description *</Label>
             <Textarea
               id="description"
-              placeholder="Describe your parking space..."
+              placeholder="Describe your parking space, security features, access details..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               required
@@ -243,70 +359,26 @@ export function AddSpaceForm() {
             />
           </div>
 
+          {/* Location */}
           <div className="space-y-2">
-            <Label htmlFor="address">Address *</Label>
-            <Input
-              id="address"
-              placeholder="123 Main St, City, State ZIP"
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="images">Space Images</Label>
-            <div className="border-2 border-dashed border-border rounded-lg p-4">
+            <Label>Location</Label>
+            <div className="flex gap-2">
               <Input
-                id="images"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImageUpload}
-                className="hidden"
+                placeholder="Full address"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                required
               />
-              <label htmlFor="images" className="flex flex-col items-center justify-center cursor-pointer py-4">
-                <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">Click to upload images</p>
-                <p className="text-xs text-muted-foreground mt-1">PNG, JPG up to 10MB</p>
-              </label>
+              <Button type="button" variant="outline" onClick={getCurrentLocation}>
+                📍 Use My Location
+              </Button>
             </div>
-            {imagePreviews.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                {imagePreviews.map((preview, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={preview}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            <p className="text-xs text-muted-foreground">
+              Detected: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+            </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="numberOfSpaces">Number of Parking Spaces *</Label>
-            <Input
-              id="numberOfSpaces"
-              type="number"
-              min="1"
-              placeholder="1"
-              value={formData.numberOfSpaces}
-              onChange={(e) => setFormData({ ...formData, numberOfSpaces: e.target.value })}
-              required
-            />
-            <p className="text-xs text-muted-foreground">How many vehicles can park at this location?</p>
-          </div>
-
+          {/* Pricing */}
           <div className="grid md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="pricePerHour">Price per Hour (KES) *</Label>
@@ -347,8 +419,96 @@ export function AddSpaceForm() {
             </div>
           </div>
 
+          {/* Images - Now compulsory with limit */}
           <div className="space-y-2">
-            <Label>Availability Dates</Label>
+            <Label htmlFor="images">Space Images * (Required, max 5)</Label>
+            <div className="border-2 border-dashed border-border rounded-lg p-4">
+              <Input
+                ref={fileInputRef}
+                id="images"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageUpload}
+                className="hidden"
+                disabled={selectedFiles.length >= MAX_IMAGES}
+              />
+              <label htmlFor="images" className="flex flex-col items-center justify-center cursor-pointer py-4">
+                <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">Click to upload images</p>
+                <p className="text-xs text-muted-foreground mt-1">PNG, JPG up to 5MB each, max 5 images</p>
+              </label>
+            </div>
+            {imagePreviews.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                {imagePreviews.map((preview, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={preview}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {selectedFiles.length < MIN_IMAGES && (
+              <p className="text-xs text-destructive mt-2">At least 1 image is required to list your space</p>
+            )}
+            <p className="text-xs text-muted-foreground mt-2">
+              {selectedFiles.length}/{MAX_IMAGES} images uploaded
+            </p>
+          </div>
+
+          {/* Features & Vehicle Types */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label>Features</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {availableFeatures.map((feature) => (
+                  <div key={feature} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={feature}
+                      checked={formData.features.includes(feature)}
+                      onCheckedChange={() => handleFeatureToggle(feature)}
+                    />
+                    <label htmlFor={feature} className="text-sm cursor-pointer">
+                      {feature}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Vehicle Types Allowed *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {vehicleTypeOptions.map((type) => (
+                  <div key={type} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={type}
+                      checked={formData.vehicleTypes.includes(type)}
+                      onCheckedChange={() => handleVehicleTypeToggle(type)}
+                    />
+                    <label htmlFor={type} className="text-sm cursor-pointer capitalize">
+                      {type}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Availability Dates */}
+          <div className="space-y-2">
+            <Label>Availability Dates (Optional)</Label>
             <p className="text-xs text-muted-foreground mb-2">
               Set when your parking space will be available for booking
             </p>
@@ -395,65 +555,11 @@ export function AddSpaceForm() {
             </Button>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="spaceType">Space Type *</Label>
-            <Select
-              value={formData.spaceType}
-              onValueChange={(value) => setFormData({ ...formData, spaceType: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="driveway">Driveway</SelectItem>
-                <SelectItem value="garage">Garage</SelectItem>
-                <SelectItem value="lot">Parking Lot</SelectItem>
-                <SelectItem value="street">Street Parking</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Features</Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {availableFeatures.map((feature) => (
-                <div key={feature} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={feature}
-                    checked={formData.features.includes(feature)}
-                    onCheckedChange={() => handleFeatureToggle(feature)}
-                  />
-                  <label htmlFor={feature} className="text-sm cursor-pointer">
-                    {feature}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Vehicle Types Allowed *</Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {vehicleTypeOptions.map((type) => (
-                <div key={type} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={type}
-                    checked={formData.vehicleTypes.includes(type)}
-                    onCheckedChange={() => handleVehicleTypeToggle(type)}
-                  />
-                  <label htmlFor={type} className="text-sm cursor-pointer capitalize">
-                    {type}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-
           <div className="flex gap-3 pt-4">
-            <Button type="button" variant="outline" className="flex-1" onClick={() => router.back()}>
+            <Button type="button" variant="outline" className="flex-1 bg-transparent" onClick={() => router.back()}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || !user} className="flex-1">
+            <Button type="submit" className="flex-1 bg-success hover:bg-success/90" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

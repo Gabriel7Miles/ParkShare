@@ -43,7 +43,6 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   })
 
   useEffect(() => {
-    // Initialize Firebase in useEffect to ensure it runs on client after mount
     try {
       const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig)
       const auth = getAuth(app)
@@ -59,7 +58,8 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       })
 
       console.log("[v0] Firebase initialized successfully")
-      console.log("[v0] Firestore instance:", !!db) // ✅ Added for debugging
+      console.log("[v0] Firestore instance:", !!db) // Debugging
+      console.log("[v0] Storage instance:", !!storage) // Debugging
     } catch (error) {
       console.error("[v0] Firebase initialization error:", error)
     }

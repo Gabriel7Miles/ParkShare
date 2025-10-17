@@ -9,8 +9,13 @@ import { ParkingList } from "@/components/driver/parking-list"
 import { BookingModal } from "@/components/driver/booking-modal"
 import type { ParkingSpace } from "@/lib/types/parking"
 import { useAuth } from "@/contexts/auth-context"
+import { useFirebase } from "@/contexts/firebase-context"
+import { getParkingSpaces, searchParkingSpaces } from "@/lib/firebase/parking"
 import { useRouter } from "next/navigation"
-import { Loader2, AlertCircle } from "lucide-react"
+import { Loader2, AlertCircle, MapPin, Filter } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useToast } from "@/hooks/use-toast"
 
 export default function DriverDashboard() {
   const [spaces, setSpaces] = useState<ParkingSpace[]>([])
@@ -19,10 +24,13 @@ export default function DriverDashboard() {
   const [bookingSpace, setBookingSpace] = useState<ParkingSpace | null>(null)
   const [loading, setLoading] = useState(true)
   const [mapError, setMapError] = useState<string | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
   const { user, userProfile, loading: authLoading } = useAuth()
+  const { db } = useFirebase()
   const router = useRouter()
+  const { toast } = useToast()
 
-  // ✅ AUTH REDIRECT
+  // Auth redirect
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
@@ -35,182 +43,129 @@ export default function DriverDashboard() {
     }
   }, [user, userProfile, authLoading, router])
 
-  // ✅ LOAD SPACES (Replace with real API call later)
+  // Load available spaces
   useEffect(() => {
-    loadSpaces()
-  }, [])
+    if (db) {
+      loadSpaces()
+
+      // Real-time refresh
+      const handleSpaceCreated = () => {
+        console.log("[Driver Dashboard] New space available, refreshing...")
+        loadSpaces()
+      }
+      
+      window.addEventListener('space:created', handleSpaceCreated)
+      window.addEventListener('focus', loadSpaces)
+
+      return () => {
+        window.removeEventListener('space:created', handleSpaceCreated)
+        window.removeEventListener('focus', loadSpaces)
+      }
+    }
+  }, [db])
 
   const loadSpaces = async () => {
+    if (!db) return
+    
     setLoading(true)
     setMapError(null)
     try {
-      console.log("[Dashboard] Loading parking spaces...")
+      console.log("[Driver Dashboard] Loading available spaces...")
+      const availableSpaces = await getParkingSpaces(db)
+      setSpaces(availableSpaces)
+      setFilteredSpaces(availableSpaces)
       
-      // TODO: Replace with real API call
-      // const response = await fetch('/api/spaces/available')
-      // const data = await response.json()
-      
-      const mockSpaces: ParkingSpace[] = [
-        {
-          id: "1",
-          hostId: "host1",
-          hostName: "John Smith",
-          hostPhone: "+254 712 345 678",
-          title: "Downtown Garage - Covered Parking",
-          description: "Secure covered parking in the heart of downtown. Perfect for daily commuters.",
-          address: "123 Main St, Nairobi, Kenya",
-          location: { lat: -1.2864, lng: 36.8172 },
-          pricePerHour: 850,
-          pricePerDay: 4500,
-          availability: "available",
-          features: ["Covered", "24/7 Access", "Security Camera", "EV Charging"],
-          images: [],
-          rating: 4.8,
-          reviewCount: 127,
-          spaceType: "garage",
-          vehicleTypes: ["sedan", "suv", "truck"],
-          numberOfSpaces: 5,
-          createdAt: new Date(),
-        },
-        {
-          id: "2",
-          hostId: "host2",
-          hostName: "Sarah Johnson",
-          hostPhone: "+254 723 456 789",
-          title: "Westlands Driveway - Easy Access",
-          description: "Private driveway with easy in/out access. Close to shopping centers.",
-          address: "456 Waiyaki Way, Westlands, Nairobi",
-          location: { lat: -1.2676, lng: 36.807 },
-          pricePerHour: 600,
-          pricePerDay: 3500,
-          availability: "available",
-          features: ["Private", "Well-lit", "Close to Transit"],
-          images: [],
-          rating: 4.5,
-          reviewCount: 89,
-          spaceType: "driveway",
-          vehicleTypes: ["sedan", "suv"],
-          numberOfSpaces: 2,
-          createdAt: new Date(),
-        },
-        {
-          id: "3",
-          hostId: "host3",
-          hostName: "Mike Davis",
-          hostPhone: "+254 734 567 890",
-          title: "CBD Parking Lot - Monthly Available",
-          description: "Large parking lot with monthly rates available. Perfect for office workers.",
-          address: "789 Kenyatta Avenue, CBD, Nairobi",
-          location: { lat: -1.2841, lng: 36.8155 },
-          pricePerHour: 1000,
-          pricePerDay: 5500,
-          pricePerMonth: 45000,
-          availability: "available",
-          features: ["Covered", "Security Camera", "24/7 Access"],
-          images: [],
-          rating: 4.9,
-          reviewCount: 203,
-          spaceType: "lot",
-          vehicleTypes: ["sedan", "suv", "truck", "motorcycle"],
-          numberOfSpaces: 20,
-          createdAt: new Date(),
-        },
-      ]
-
-      setSpaces(mockSpaces)
-      setFilteredSpaces(mockSpaces)
-      console.log(`[Dashboard] Loaded ${mockSpaces.length} spaces`)
+      console.log(`[Driver Dashboard] Loaded ${availableSpaces.length} available spaces`)
     } catch (error) {
-      console.error("[Dashboard] Error loading spaces:", error)
-      setMapError("Failed to load parking spaces")
+      console.error("[Driver Dashboard] Error loading spaces:", error)
+      setMapError("Failed to load parking spaces. Please check your connection.")
+      toast({
+        title: "Connection Error",
+        description: "Unable to load available spaces",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
   }
 
-  // ✅ SEARCH & FILTER
   const handleSearch = useCallback(async (query: string, filters?: FilterOptions) => {
     setLoading(true)
     try {
-      let results = [...spaces]
+      let results: ParkingSpace[]
 
-      // Text search
       if (query.trim()) {
-        const searchTerm = query.toLowerCase()
-        results = results.filter((space) =>
-          space.title.toLowerCase().includes(searchTerm) ||
-          space.address.toLowerCase().includes(searchTerm) ||
-          space.description.toLowerCase().includes(searchTerm)
-        )
+        results = await searchParkingSpaces(db, query)
+      } else {
+        results = await getParkingSpaces(db)
       }
 
-      // Filters
+      // Apply client-side filters
       if (filters) {
-        if (filters.spaceTypes?.length > 0) {
-          results = results.filter((space) => 
-            filters.spaceTypes.includes(space.spaceType)
-          )
-        }
+        results = results.filter(space => {
+          // Space type filter
+          if (filters.spaceTypes?.length && !filters.spaceTypes.includes(space.spaceType!)) {
+            return false
+          }
+          
+          // Price filter
+          if (filters.priceRange && space.pricePerHour) {
+            if (space.pricePerHour < filters.priceRange[0] || space.pricePerHour > filters.priceRange[1]) {
+              return false
+            }
+          }
+          
+          // Rating filter
+          if (filters.minRating && space.rating) {
+            if (space.rating < filters.minRating) {
+              return false
+            }
+          }
+          
+          // Features filter
+          if (filters.features?.length && space.features) {
+            const hasRequiredFeatures = filters.features.some(feat => space.features!.includes(feat))
+            if (!hasRequiredFeatures) return false
+          }
 
-        if (filters.features?.length > 0) {
-          results = results.filter((space) => 
-            filters.features.some((feature) => 
-              space.features?.includes(feature)
-            )
-          )
-        }
-
-        if (filters.vehicleTypes?.length > 0) {
-          results = results.filter((space) => 
-            filters.vehicleTypes.some((type) => 
-              space.vehicleTypes?.includes(type)
-            )
-          )
-        }
-
-        if (filters.priceRange) {
-          results = results.filter((space) => 
-            space.pricePerHour >= filters.priceRange[0] && 
-            space.pricePerHour <= filters.priceRange[1]
-          )
-        }
-
-        if (filters.minRating && filters.minRating > 0) {
-          results = results.filter((space) => 
-            space.rating >= filters.minRating!
-          )
-        }
+          return true
+        })
       }
 
       setFilteredSpaces(results)
-      console.log(`[Dashboard] Filtered to ${results.length} spaces`)
+      console.log(`[Driver Dashboard] Filtered to ${results.length} spaces`)
     } catch (error) {
-      console.error("[Dashboard] Search error:", error)
+      console.error("[Driver Dashboard] Search error:", error)
+      toast({
+        title: "Search Error",
+        description: "Failed to search parking spaces",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
-  }, [spaces])
+  }, [db, toast])
 
-  // AUTH LOADING
-  if (authLoading) {
+  // Loading state
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-primary" />
-          <p className="text-muted-foreground">Loading...</p>
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading parking spaces...</p>
         </div>
       </div>
     )
   }
 
-  // AUTH CHECK
+  // Auth check
   if (!user || userProfile?.role !== "driver") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-          <p className="text-muted-foreground">Please log in as a driver</p>
+          <p className="text-muted-foreground">Driver account required</p>
         </div>
       </div>
     )
@@ -222,44 +177,88 @@ export default function DriverDashboard() {
       
       <div className="pt-16">
         <div className="container mx-auto p-4 max-w-7xl">
-          {/* HEADER */}
+          {/* Header */}
           <div className="mb-6">
-            <h1 className="text-3xl font-bold mb-2">Find Parking Near You</h1>
-            <p className="text-muted-foreground">Discover and book secure parking spaces</p>
+            <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
+              <MapPin className="w-8 h-8" />
+              Find Parking Near You
+            </h1>
+            <p className="text-muted-foreground">
+              {filteredSpaces.length} available spaces • Last updated {new Date().toLocaleTimeString()}
+            </p>
           </div>
 
-          {/* SEARCH BAR */}
-          <div className="mb-6">
-            <SearchBar onSearch={handleSearch} />
-          </div>
+          {/* Search & Filters */}
+          <Card className="mb-6">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-lg">Search & Filters</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <Filter className="w-4 h-4 mr-2" />
+                {showFilters ? 'Hide' : 'Show'} Filters
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <SearchBar onSearch={handleSearch} />
+            </CardContent>
+          </Card>
 
-          {/* ERROR STATE */}
+          {/* Error State */}
           {mapError && (
-            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-destructive" />
-                <span className="text-sm text-destructive">{mapError}</span>
-                <button
-                  onClick={loadSpaces}
-                  className="ml-auto text-sm text-primary hover:underline"
-                >
-                  Retry
-                </button>
-              </div>
-            </div>
+            <Card className="mb-6 border-destructive bg-destructive/5">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-destructive" />
+                  <div>
+                    <p className="text-sm font-medium text-destructive">{mapError}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={loadSpaces}
+                      className="mt-2"
+                    >
+                      Retry Loading Spaces
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
-          {/* CONTENT */}
-          {loading ? (
-            <div className="flex items-center justify-center h-96">
-              <div className="text-center">
-                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-primary" />
-                <p className="text-muted-foreground">Loading parking spaces...</p>
+          {/* Stats */}
+          <div className="grid md:grid-cols-4 gap-4 mb-6">
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold">{filteredSpaces.length}</div>
+                <div className="text-sm text-muted-foreground">Available Spaces</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-success">
+                  KES {Math.min(...filteredSpaces.map(s => s.pricePerHour || 0)) || 0}
+                </div>
+                <div className="text-sm text-muted-foreground">Starting Price/Hr</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Content */}
+          {!loading && (
+            <div className="grid lg:grid-cols-[1fr_400px] gap-6">
+              {/* Map View */}
+              <div className="lg:order-1 h-[500px] lg:h-[calc(100vh-300px)]">
+                <MapView
+                  spaces={filteredSpaces}
+                  selectedSpace={selectedSpace}
+                  onSpaceSelect={setSelectedSpace}
+                />
               </div>
-            </div>
-          ) : (
-            <div className="grid lg:grid-cols-[1fr_1fr] xl:grid-cols-[1fr_400px] gap-6">
-              {/* LIST VIEW */}
+              
+              {/* Parking List */}
               <div className="lg:order-2">
                 <ParkingList
                   spaces={filteredSpaces}
@@ -268,21 +267,12 @@ export default function DriverDashboard() {
                   onBookNow={setBookingSpace}
                 />
               </div>
-
-              {/* MAP VIEW */}
-              <div className="lg:order-1 h-[500px] lg:h-[calc(100vh-280px)]">
-                <MapView
-                  spaces={filteredSpaces}
-                  selectedSpace={selectedSpace}
-                  onSpaceSelect={setSelectedSpace}
-                />
-              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* BOOKING MODAL */}
+      {/* Booking Modal */}
       <BookingModal 
         space={bookingSpace} 
         open={!!bookingSpace} 
