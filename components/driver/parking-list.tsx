@@ -11,7 +11,7 @@ import Image from "next/image"
 
 interface ParkingListProps {
   spaces: ParkingSpace[]
-  onSpaceSelect: (space: ParkingSpace) => void
+  onSpaceSelect?: (space: ParkingSpace) => void // Made optional
   selectedSpace: ParkingSpace | null
   onBookNow: (space: ParkingSpace) => void
 }
@@ -32,25 +32,33 @@ export function ParkingList({ spaces, onSpaceSelect, selectedSpace, onBookNow }:
   return (
     <div className="space-y-4 overflow-y-auto h-full pr-2">
       {spaces.map((space) => (
-        <Link key={space.id} href={`/driver/space/${space.id}`}>
+        <Link
+          key={space.id}
+          href={`/driver/space/${space.id}`} // Ensure navigation to correct route
+          onClick={(e) => {
+            if (onSpaceSelect) {
+              onSpaceSelect(space); // Call onSpaceSelect without preventing default
+            }
+          }}
+          className="block" // Ensure the link is clickable
+        >
           <Card
             className={`cursor-pointer transition-all hover:shadow-md border-2 ${
               selectedSpace?.id === space.id ? "ring-2 ring-primary border-primary" : "border-border"
             }`}
-            onClick={() => onSpaceSelect(space)}
           >
             {/* ✅ IMAGE SECTION */}
             <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
               {space.images && space.images.length > 0 ? (
                 <Image
-                  src={space.images[0]}
-                  alt={space.title}
+                  src={space.images[0] || "/placeholder-parking.jpg"}
+                  alt={space.title || "Parking space image"}
                   fill
                   className="object-cover hover:scale-105 transition-transform duration-300"
                   sizes="(max-width: 768px) 100vw, 300px"
                   onError={(e) => {
-                    console.warn('[ParkingList] Image load error:', space.images[0])
-                    ;(e.target as HTMLImageElement).src = "/placeholder-parking.jpg"
+                    console.warn("[ParkingList] Image load error:", space.images[0]);
+                    (e.target as HTMLImageElement).src = "/placeholder-parking.jpg";
                   }}
                   priority={false}
                 />
@@ -60,7 +68,7 @@ export function ParkingList({ spaces, onSpaceSelect, selectedSpace, onBookNow }:
                   <p className="text-sm text-muted-foreground ml-2">No image</p>
                 </div>
               )}
-              <Badge 
+              <Badge
                 className="absolute top-2 right-2 bg-success text-success-foreground border-success/50"
                 variant="default"
               >
@@ -84,7 +92,7 @@ export function ParkingList({ spaces, onSpaceSelect, selectedSpace, onBookNow }:
                 </div>
               </div>
             </CardHeader>
-            
+
             <CardContent className="space-y-3 pb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -98,7 +106,7 @@ export function ParkingList({ spaces, onSpaceSelect, selectedSpace, onBookNow }:
                   </Badge>
                 </div>
                 <div className="flex items-center gap-1 text-primary font-bold text-lg">
-                  <span>KES {space.pricePerHour}</span>
+                  <span>KES {space.pricePerHour || 0}</span>
                   <span className="text-sm font-normal text-muted-foreground">/hr</span>
                 </div>
               </div>
@@ -121,12 +129,12 @@ export function ParkingList({ spaces, onSpaceSelect, selectedSpace, onBookNow }:
               <Button
                 className="w-full bg-primary hover:bg-primary/90"
                 onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  onBookNow(space)
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onBookNow(space);
                 }}
               >
-                Book Now - KES {space.pricePerHour}/hr
+                Book Now - KES {space.pricePerHour || 0}/hr
               </Button>
             </CardContent>
           </Card>

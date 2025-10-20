@@ -17,9 +17,11 @@ import { ReviewStatsCard } from "@/components/reviews/review-stats"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { useFirebase } from "@/contexts/firebase-context"
 
 export default function SpaceDetailsPage() {
   const params = useParams()
+  const { db } = useFirebase()
   const [space, setSpace] = useState<ParkingSpace | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
   const [stats, setStats] = useState<ReviewStats | null>(null)
@@ -31,25 +33,69 @@ export default function SpaceDetailsPage() {
   const { toast } = useToast()
 
   useEffect(() => {
-    loadSpaceDetails()
-  }, [params.id])
-
-  const loadSpaceDetails = async () => {
-    setLoading(true)
-    try {
-      const spaceData = await getParkingSpaceById(params.id as string)
-      const reviewsData = await getSpaceReviews(params.id as string)
-      const statsData = await getReviewStats(params.id as string)
-
-      setSpace(spaceData)
-      setReviews(reviewsData)
-      setStats(statsData)
-    } catch (error) {
-      console.error("[v0] Error loading space details:", error)
-    } finally {
+    if (!db) {
+      console.error("[Space Details] Firestore not initialized")
       setLoading(false)
+      toast({
+        title: "Error",
+        description: "Firestore not initialized. Please refresh the page.",
+        variant: "destructive",
+      })
+      return
     }
-  }
+
+    const loadSpaceDetails = async () => {
+      setLoading(true)
+      const id = params.id as string | undefined
+      if (!id) {
+        console.error("[Space Details] Invalid or undefined space ID:", params.id)
+        setLoading(false)
+        toast({
+          title: "Error",
+          description: "Invalid space ID",
+          variant: "destructive",
+        })
+        return
+      }
+
+      try {
+        // Fetch space data first
+        const spaceData = await getParkingSpaceById(db, id)
+        if (!spaceData) {
+          console.warn("[Space Details] Space not found for ID:", id)
+          setLoading(false)
+          return
+        }
+        setSpace(spaceData) // Set space even if reviews fail
+
+        // Attempt to fetch reviews and stats, handle permissions error
+        try {
+          const reviewsData = await getSpaceReviews(db, id)
+          const statsData = await getReviewStats(db, id)
+          setReviews(reviewsData)
+          setStats(statsData)
+        } catch (reviewError) {
+          console.warn("[Space Details] Failed to load reviews or stats:", reviewError)
+          toast({
+            title: "Warning",
+            description: "Unable to load reviews or stats due to permissions. Space details are still available.",
+            variant: "warning",
+          })
+        }
+      } catch (error) {
+        console.error("[Space Details] Error loading space details:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load space details. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadSpaceDetails()
+  }, [params.id, db, toast])
 
   const handleSubmitReview = async () => {
     if (!user || !userProfile || rating === 0) {
@@ -61,12 +107,21 @@ export default function SpaceDetailsPage() {
       return
     }
 
+    if (!db || !params.id) {
+      toast({
+        title: "Error",
+        description: "Firestore or space ID not available",
+        variant: "destructive",
+      })
+      return
+    }
+
     setSubmitting(true)
     try {
-      await createReview({
+      await createReview(db, {
         spaceId: params.id as string,
         driverId: user.uid,
-        driverName: userProfile.displayName,
+        driverName: userProfile.displayName || "Anonymous",
         rating,
         comment,
       })
@@ -78,11 +133,15 @@ export default function SpaceDetailsPage() {
 
       setRating(0)
       setComment("")
-      loadSpaceDetails()
+      // Refresh data with db
+      const reviewsData = await getSpaceReviews(db, params.id as string)
+      const statsData = await getReviewStats(db, params.id as string)
+      setReviews(reviewsData)
+      setStats(statsData)
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to submit review",
         variant: "destructive",
       })
     } finally {
@@ -107,6 +166,12 @@ export default function SpaceDetailsPage() {
         <DriverDashboardNav />
         <div className="pt-16 container mx-auto p-4">
           <p>Space not found</p>
+          <Link href="/driver/dashboard">
+            <Button variant="ghost" className="mt-4 gap-2">
+              <ArrowLeft className="w-4 h-4" />
+              Back to Dashboard
+            </Button>
+          </Link>
         </div>
       </div>
     )
@@ -158,7 +223,7 @@ export default function SpaceDetailsPage() {
                   <div className="flex items-center gap-1">
                     <Star className="w-5 h-5 fill-accent text-accent" />
                     <span className="font-semibold">{space.rating.toFixed(1)}</span>
-                    <span className="text-sm text-muted-foreground">({space.reviewCount} reviews)</span>
+                    <span className="text-sm text-muted-foreground">({space.reviewCount || 0} reviews)</span>
                   </div>
                   <Badge variant="outline">{space.spaceType}</Badge>
                   {space.numberOfSpaces && <Badge variant="secondary">{space.numberOfSpaces} spaces available</Badge>}

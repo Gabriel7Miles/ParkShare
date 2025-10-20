@@ -1,4 +1,3 @@
-// app/driver/dashboard/page.tsx
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
@@ -26,127 +25,111 @@ export default function DriverDashboard() {
   const [mapError, setMapError] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   const { user, userProfile, loading: authLoading } = useAuth()
-  const { db } = useFirebase()
+  const { db } = useFirebase() // useFirebase now throws if not initialized
   const router = useRouter()
   const { toast } = useToast()
 
-  // Auth redirect
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.push("/login")
-        return
-      }
-      if (userProfile?.role === "host") {
-        router.push("/host/dashboard")
-      }
-    }
-  }, [user, userProfile, authLoading, router])
+    let unsubscribe: (() => void) | undefined;
 
-  // Load available spaces
-  useEffect(() => {
-    if (db) {
-      loadSpaces()
-
-      // Real-time refresh
-      const handleSpaceCreated = () => {
-        console.log("[Driver Dashboard] New space available, refreshing...")
-        loadSpaces()
+    const loadSpaces = async () => {
+      if (!db) {
+        console.error("[Driver Dashboard] Firestore instance not available");
+        setMapError("Firestore not initialized. Please refresh the page.");
+        setLoading(false);
+        return;
       }
-      
-      window.addEventListener('space:created', handleSpaceCreated)
-      window.addEventListener('focus', loadSpaces)
 
-      return () => {
-        window.removeEventListener('space:created', handleSpaceCreated)
-        window.removeEventListener('focus', loadSpaces)
+      if (unsubscribe) unsubscribe(); // Clean up previous listener
+      try {
+        console.log("[Driver Dashboard] Setting up listener for available spaces...");
+        unsubscribe = await getParkingSpaces(db, (newSpaces) => {
+          console.log("[Driver Dashboard] Received spaces:", newSpaces.length);
+          setSpaces(newSpaces);
+          setFilteredSpaces(newSpaces); // Sync filteredSpaces with latest data
+          setLoading(false);
+        });
+      } catch (error) {
+        console.error("[Driver Dashboard] Error setting up listener:", error);
+        setMapError("Failed to load parking spaces. Please try again.");
+        toast({
+          title: "Connection Error",
+          description: "Unable to load available spaces",
+          variant: "destructive",
+        });
+        setLoading(false); // Ensure loading stops on error
       }
-    }
-  }, [db])
+    };
 
-  const loadSpaces = async () => {
-    if (!db) return
-    
-    setLoading(true)
-    setMapError(null)
-    try {
-      console.log("[Driver Dashboard] Loading available spaces...")
-      const availableSpaces = await getParkingSpaces(db)
-      setSpaces(availableSpaces)
-      setFilteredSpaces(availableSpaces)
-      
-      console.log(`[Driver Dashboard] Loaded ${availableSpaces.length} available spaces`)
-    } catch (error) {
-      console.error("[Driver Dashboard] Error loading spaces:", error)
-      setMapError("Failed to load parking spaces. Please check your connection.")
-      toast({
-        title: "Connection Error",
-        description: "Unable to load available spaces",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
+    loadSpaces();
+
+    const handleSpaceCreated = () => {
+      console.log("[Driver Dashboard] New space available, refreshing...");
+      loadSpaces();
+    };
+
+    window.addEventListener('space:created', handleSpaceCreated);
+    window.addEventListener('focus', loadSpaces);
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+      window.removeEventListener('space:created', handleSpaceCreated);
+      window.removeEventListener('focus', loadSpaces);
+    };
+  }, [db, toast]);
 
   const handleSearch = useCallback(async (query: string, filters?: FilterOptions) => {
-    setLoading(true)
+    if (!db) {
+      console.error("[Driver Dashboard] Firestore instance not available during search");
+      toast({
+        title: "Search Error",
+        description: "Firestore not initialized. Please refresh the page.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
     try {
-      let results: ParkingSpace[]
+      let unsubscribe: (() => void) | undefined;
+      unsubscribe = await searchParkingSpaces(db, query, (newSpaces) => {
+        let filtered = [...newSpaces]; // Work with a copy to avoid mutation issues
+        if (filters) {
+          const applyFilters = (spaces: ParkingSpace[]) => {
+            return spaces.filter(space => {
+              if (filters.spaceTypes?.length && !filters.spaceTypes.includes(space.spaceType || '')) return false;
+              if (filters.priceRange && space.pricePerHour) {
+                if (space.pricePerHour < filters.priceRange[0] || space.pricePerHour > filters.priceRange[1]) return false;
+              }
+              if (filters.minRating && space.rating) {
+                if (space.rating < filters.minRating) return false;
+              }
+              if (filters.features?.length && space.features) {
+                const hasRequiredFeatures = filters.features.some(feat => (space.features || []).includes(feat));
+                if (!hasRequiredFeatures) return false;
+              }
+              return true;
+            });
+          };
+          filtered = applyFilters(filtered);
+        }
+        setFilteredSpaces(filtered);
+        console.log("[Driver Dashboard] Filtered to", filtered.length, "spaces");
+      });
 
-      if (query.trim()) {
-        results = await searchParkingSpaces(db, query)
-      } else {
-        results = await getParkingSpaces(db)
-      }
-
-      // Apply client-side filters
-      if (filters) {
-        results = results.filter(space => {
-          // Space type filter
-          if (filters.spaceTypes?.length && !filters.spaceTypes.includes(space.spaceType!)) {
-            return false
-          }
-          
-          // Price filter
-          if (filters.priceRange && space.pricePerHour) {
-            if (space.pricePerHour < filters.priceRange[0] || space.pricePerHour > filters.priceRange[1]) {
-              return false
-            }
-          }
-          
-          // Rating filter
-          if (filters.minRating && space.rating) {
-            if (space.rating < filters.minRating) {
-              return false
-            }
-          }
-          
-          // Features filter
-          if (filters.features?.length && space.features) {
-            const hasRequiredFeatures = filters.features.some(feat => space.features!.includes(feat))
-            if (!hasRequiredFeatures) return false
-          }
-
-          return true
-        })
-      }
-
-      setFilteredSpaces(results)
-      console.log(`[Driver Dashboard] Filtered to ${results.length} spaces`)
     } catch (error) {
-      console.error("[Driver Dashboard] Search error:", error)
+      console.error("[Driver Dashboard] Search error:", error);
       toast({
         title: "Search Error",
         description: "Failed to search parking spaces",
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [db, toast])
+    return () => { if (unsubscribe) unsubscribe(); };
+  }, [db, toast]);
 
-  // Loading state
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -158,7 +141,6 @@ export default function DriverDashboard() {
     )
   }
 
-  // Auth check
   if (!user || userProfile?.role !== "driver") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -177,7 +159,6 @@ export default function DriverDashboard() {
       
       <div className="pt-16">
         <div className="container mx-auto p-4 max-w-7xl">
-          {/* Header */}
           <div className="mb-6">
             <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
               <MapPin className="w-8 h-8" />
@@ -188,7 +169,6 @@ export default function DriverDashboard() {
             </p>
           </div>
 
-          {/* Search & Filters */}
           <Card className="mb-6">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg">Search & Filters</CardTitle>
@@ -206,7 +186,6 @@ export default function DriverDashboard() {
             </CardContent>
           </Card>
 
-          {/* Error State */}
           {mapError && (
             <Card className="mb-6 border-destructive bg-destructive/5">
               <CardContent className="p-4">
@@ -217,7 +196,10 @@ export default function DriverDashboard() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={loadSpaces}
+                      onClick={() => {
+                        setMapError(null);
+                        loadSpaces();
+                      }}
                       className="mt-2"
                     >
                       Retry Loading Spaces
@@ -228,7 +210,6 @@ export default function DriverDashboard() {
             </Card>
           )}
 
-          {/* Stats */}
           <div className="grid md:grid-cols-4 gap-4 mb-6">
             <Card>
               <CardContent className="p-4">
@@ -246,10 +227,8 @@ export default function DriverDashboard() {
             </Card>
           </div>
 
-          {/* Main Content */}
           {!loading && (
             <div className="grid lg:grid-cols-[1fr_400px] gap-6">
-              {/* Map View */}
               <div className="lg:order-1 h-[500px] lg:h-[calc(100vh-300px)]">
                 <MapView
                   spaces={filteredSpaces}
@@ -258,7 +237,6 @@ export default function DriverDashboard() {
                 />
               </div>
               
-              {/* Parking List */}
               <div className="lg:order-2">
                 <ParkingList
                   spaces={filteredSpaces}
@@ -272,7 +250,6 @@ export default function DriverDashboard() {
         </div>
       </div>
 
-      {/* Booking Modal */}
       <BookingModal 
         space={bookingSpace} 
         open={!!bookingSpace} 

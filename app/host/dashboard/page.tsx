@@ -1,4 +1,3 @@
-// app/host/dashboard/page.tsx
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
@@ -22,64 +21,59 @@ import { Badge } from "@/components/ui/badge"
 export default function HostDashboard() {
   const [spaces, setSpaces] = useState<ParkingSpace[]>([])
   const [loading, setLoading] = useState(true)
-  const [statsLoading, setStatsLoading] = useState(true)
+  const [statsLoading, setStatsLoading] = useState(true) // Controlled separately
   const { user, userProfile, loading: authLoading } = useAuth()
   const { db, storage } = useFirebase()
   const router = useRouter()
   const { toast } = useToast()
 
-  // Auth redirect
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.push("/login")
-      } else if (userProfile?.role === "driver") {
-        router.push("/driver/dashboard")
+    let unsubscribe: (() => void) | undefined;
+
+    const loadSpaces = async () => {
+      if (unsubscribe) unsubscribe(); // Clean up previous listener
+      if (user && db && storage && userProfile?.role === "host") {
+        try {
+          console.log("[Host Dashboard] Setting up listener for host:", user.uid);
+          setStatsLoading(true); // Start loading stats when fetching new data
+          unsubscribe = await getHostSpaces(db, user.uid, (newSpaces) => {
+            console.log("[Host Dashboard] Received spaces:", newSpaces.length);
+            setSpaces(newSpaces);
+            setLoading(false); // General loading complete
+            setStatsLoading(false); // Stats loading complete once data is received
+          });
+        } catch (error) {
+          console.error("[Host Dashboard] Error setting up listener:", error);
+          toast({
+            title: "Error Loading Spaces",
+            description: "Failed to load your parking spaces. Check your connection or Firestore rules.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          setStatsLoading(false); // Stop stats loading on error
+        }
+      } else {
+        setLoading(false);
+        setStatsLoading(false); // Stop loading if conditions aren't met
       }
-    }
-  }, [user, userProfile, authLoading, router])
+    };
 
-  // Load spaces with real-time updates
-  useEffect(() => {
-    if (user && db && storage && userProfile?.role === "host") {
-      loadSpaces()
+    loadSpaces();
 
-      const handleSpaceCreated = () => {
-        console.log("[Host Dashboard] New space detected, refreshing...")
-        loadSpaces()
-      }
-      
-      window.addEventListener('space:created', handleSpaceCreated)
-      window.addEventListener('focus', loadSpaces)
+    const handleSpaceCreated = () => {
+      console.log("[Host Dashboard] New space detected, refreshing...");
+      loadSpaces();
+    };
 
-      return () => {
-        window.removeEventListener('space:created', handleSpaceCreated)
-        window.removeEventListener('focus', loadSpaces)
-      }
-    }
-  }, [user, db, storage, userProfile])
+    window.addEventListener('space:created', handleSpaceCreated);
+    window.addEventListener('focus', loadSpaces);
 
-  const loadSpaces = useCallback(async () => {
-    if (!user || !db || !storage) return
-    
-    setLoading(true)
-    try {
-      console.log("[Host Dashboard] Loading spaces for:", user.uid)
-      const hostSpaces = await getHostSpaces(db, user.uid)
-      setSpaces(hostSpaces)
-      console.log(`[Host Dashboard] Loaded ${hostSpaces.length} spaces`)
-    } catch (error) {
-      console.error("[Host Dashboard] Error loading spaces:", error)
-      toast({
-        title: "Error Loading Spaces",
-        description: "Failed to load your parking spaces",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-      setStatsLoading(false)
-    }
-  }, [user, db, storage, toast])
+    return () => {
+      if (unsubscribe) unsubscribe();
+      window.removeEventListener('space:created', handleSpaceCreated);
+      window.removeEventListener('focus', loadSpaces);
+    };
+  }, [user, db, storage, userProfile, toast]);
 
   const handleDelete = async (spaceId: string) => {
     if (!confirm("Are you sure you want to delete this space? This will also delete all associated images. This action cannot be undone.")) return
@@ -113,11 +107,9 @@ export default function HostDashboard() {
     }
   }
 
-  // Calculate stats
   const availableSpaces = spaces.filter(s => s.availability === 'available').length
   const occupiedSpaces = spaces.filter(s => s.availability === 'occupied').length
 
-  // Loading or auth check
   if (authLoading || !user || !db || !storage || userProfile?.role !== "host") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -135,7 +127,6 @@ export default function HostDashboard() {
       
       <div className="pt-16">
         <div className="container mx-auto p-4 max-w-7xl">
-          {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold mb-2">My Parking Spaces</h1>
@@ -151,7 +142,6 @@ export default function HostDashboard() {
             </Link>
           </div>
 
-          {/* Stats Cards - Simplified to 3 cards */}
           {statsLoading ? (
             <div className="grid md:grid-cols-3 gap-6 mb-8">
               {[...Array(3)].map((_, i) => (
@@ -164,7 +154,6 @@ export default function HostDashboard() {
             </div>
           ) : (
             <div className="grid md:grid-cols-3 gap-6 mb-8">
-              {/* Total Spaces */}
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-2">
@@ -177,8 +166,6 @@ export default function HostDashboard() {
                   <div className="text-sm text-muted-foreground">Parking Spaces</div>
                 </CardContent>
               </Card>
-
-              {/* Available Spaces */}
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-2">
@@ -191,8 +178,6 @@ export default function HostDashboard() {
                   <div className="text-sm text-muted-foreground">Ready to Book</div>
                 </CardContent>
               </Card>
-
-              {/* Occupied Spaces */}
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-2">
@@ -208,7 +193,6 @@ export default function HostDashboard() {
             </div>
           )}
 
-          {/* Spaces List */}
           {loading ? (
             <div className="flex items-center justify-center h-96">
               <div className="text-center">
