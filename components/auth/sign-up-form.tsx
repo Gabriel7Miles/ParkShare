@@ -1,24 +1,18 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { signUpWithEmail, signInWithGoogle, type UserRole } from "@/lib/firebase/auth"
+import { signUpWithEmail, signInWithGoogle } from "@/lib/firebase/auth"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2 } from "lucide-react"
 import { useFirebase } from "@/contexts/firebase-context"
 
-interface SignUpFormProps {
-  role: UserRole
-  onBack: () => void
-}
-
-export function SignUpForm({ role, onBack }: SignUpFormProps) {
+export function SignUpForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [displayName, setDisplayName] = useState("")
@@ -40,20 +34,24 @@ export function SignUpForm({ role, onBack }: SignUpFormProps) {
     setLoading(true)
 
     try {
-      await signUpWithEmail(auth, db, email, password, displayName, role)
-
+      await signUpWithEmail(auth, db, email, password, displayName)
       toast({
         title: "Account created!",
         description: "Welcome to ParkShare",
       })
-
-      const redirectPath = role === "driver" ? "/driver/dashboard" : "/host/dashboard"
-      router.push(redirectPath)
+      router.push("/driver/dashboard")
     } catch (error: any) {
-      console.error("[v0] Signup error:", error)
+      console.error("[SignUpForm] Signup error:", error)
+      let errorMessage = "Failed to create account. Please try again."
+      if (error.code === "auth/email-already-in-use") {
+        errorMessage = "Email already in use. Please sign in or use a different email."
+        router.push("/login")
+      } else if (error.code === "permission-denied") {
+        errorMessage = "Permission denied. Please check your account settings."
+      }
       toast({
         title: "Error",
-        description: error.message || "Failed to create account. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -72,20 +70,21 @@ export function SignUpForm({ role, onBack }: SignUpFormProps) {
     }
     setLoading(true)
     try {
-      await signInWithGoogle(auth, db, role)
-
+      await signInWithGoogle(auth, db)
       toast({
         title: "Signed in successfully!",
         description: "Welcome to ParkShare",
       })
-
-      const redirectPath = role === "driver" ? "/driver/dashboard" : "/host/dashboard"
-      router.push(redirectPath)
+      router.push("/driver/dashboard")
     } catch (error: any) {
-      console.error("[v0] Google signup error:", error)
+      console.error("[SignUpForm] Google signup error:", error)
+      let errorMessage = "Failed to sign in with Google. Please try again."
+      if (error.code === "permission-denied") {
+        errorMessage = "Permission denied. Please check your account settings."
+      }
       toast({
         title: "Error",
-        description: error.message || "Failed to sign in with Google. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -97,9 +96,9 @@ export function SignUpForm({ role, onBack }: SignUpFormProps) {
     <div className="w-full max-w-md mx-auto p-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Create your {role} account</CardTitle>
+          <CardTitle className="text-2xl">Create your account</CardTitle>
           <CardDescription>
-            Sign up to start {role === "driver" ? "finding parking" : "earning from your space"}
+            Sign up to start finding parking or earning from your space
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -193,9 +192,6 @@ export function SignUpForm({ role, onBack }: SignUpFormProps) {
           </form>
 
           <div className="text-center space-y-2">
-            <Button variant="link" onClick={onBack} className="text-sm">
-              Back to role selection
-            </Button>
             <p className="text-sm text-muted-foreground">
               Already have an account?{" "}
               <Button variant="link" className="p-0 h-auto font-normal" onClick={() => router.push("/login")}>

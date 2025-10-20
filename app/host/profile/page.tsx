@@ -7,43 +7,38 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2 } from "lucide-react" // ✅ ADDED: Import Loader2
+import { Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useFirebase } from "@/contexts/firebase-context"
 import { doc, updateDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { User, Mail, Phone, Calendar } from "lucide-react"
+import { RoleSwitcher } from "@/components/profile/role-switcher"
+import { useRouter } from "next/navigation"
 
 export default function HostProfile() {
-  const { user, userProfile } = useAuth()
+  const { user, userProfile, activeRole, setActiveRole } = useAuth()
   const { db } = useFirebase()
   const { toast } = useToast()
+  const router = useRouter()
   const [phoneNumber, setPhoneNumber] = useState("")
   const [saving, setSaving] = useState(false)
   const [memberSince, setMemberSince] = useState("N/A")
 
-  // ✅ HANDLE DATE FORMATTING & PHONE INIT
   useEffect(() => {
     if (userProfile) {
-      // Initialize phone number
       setPhoneNumber(userProfile.phoneNumber || "")
-      
-      // ✅ FIX: Handle different createdAt formats
       if (userProfile.createdAt) {
         let createdDate: Date
-        
         if (userProfile.createdAt instanceof Date) {
           createdDate = userProfile.createdAt
         } else if (userProfile.createdAt?.toDate) {
-          // Firebase Timestamp
           createdDate = userProfile.createdAt.toDate()
         } else if (typeof userProfile.createdAt === "string") {
           createdDate = new Date(userProfile.createdAt)
         } else {
           createdDate = new Date(userProfile.createdAt || Date.now())
         }
-        
-        // ✅ VALIDATE DATE
         if (!isNaN(createdDate.getTime()) && createdDate.getTime() > 0) {
           setMemberSince(createdDate.toLocaleDateString('en-US', {
             year: 'numeric',
@@ -55,13 +50,11 @@ export default function HostProfile() {
           setMemberSince("Recently joined")
         }
       } else {
-        // Fallback if no createdAt
         setMemberSince("Recently joined")
       }
     }
   }, [userProfile])
 
-  // ✅ SAVE PROFILE CHANGES
   const handleSave = async () => {
     if (!user || !db || !phoneNumber.trim()) {
       toast({
@@ -75,33 +68,24 @@ export default function HostProfile() {
     setSaving(true)
     try {
       const userRef = doc(db, "users", user.uid)
-      
-      // Update profile in Firestore
       await updateDoc(userRef, {
         phoneNumber: phoneNumber.trim(),
         updatedAt: new Date(),
         displayName: userProfile?.displayName || user.displayName || user.email?.split('@')[0]
       })
-      
-      // ✅ SUCCESS TOAST
       toast({
         title: "✅ Profile Updated",
         description: "Your phone number has been saved successfully."
       })
-      
       console.log("[Host Profile] Profile updated for user:", user.uid)
-      
     } catch (error: any) {
       console.error("[Host Profile] Error saving profile:", error)
-      
-      // Handle specific Firebase errors
       let errorMessage = "Failed to save changes. Please try again."
       if (error.code === 'permission-denied') {
         errorMessage = "Permission denied. Please check your account settings."
       } else if (error.message.includes('does not exist')) {
         errorMessage = "User profile not found. Please contact support."
       }
-      
       toast({
         title: "❌ Save Failed",
         description: errorMessage,
@@ -112,9 +96,7 @@ export default function HostProfile() {
     }
   }
 
-  // ✅ PHONE VALIDATION
   const isValidPhone = (phone: string) => {
-    // Basic Kenyan phone validation (+254 format)
     const kenyaPhoneRegex = /^(\+254|0)?[17]\d{8}$/
     return kenyaPhoneRegex.test(phone.replace(/\s+/g, ''))
   }
@@ -130,24 +112,29 @@ export default function HostProfile() {
     )
   }
 
+  // Redirect if active role is not "host"
+  useEffect(() => {
+    if (activeRole === "driver") {
+      router.push("/driver/profile")
+    }
+  }, [activeRole, router])
+
   return (
     <div className="min-h-screen bg-background">
       <HostDashboardNav />
-
       <div className="pt-16">
         <div className="container mx-auto p-4 max-w-2xl">
           <div className="mb-6">
             <h1 className="text-3xl font-bold mb-2">Host Profile</h1>
             <p className="text-muted-foreground">Manage your host account information</p>
           </div>
-
+          <RoleSwitcher />
           <Card>
             <CardHeader>
               <CardTitle>Personal Information</CardTitle>
               <CardDescription>Update your profile details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* PROFILE HEADER */}
               <div className="flex items-center gap-4 pb-6 border-b">
                 <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center">
                   <User className="w-10 h-10 text-success" />
@@ -158,77 +145,45 @@ export default function HostProfile() {
                   <p className="text-xs text-green-600">✓ Verified Host</p>
                 </div>
               </div>
-
-              {/* FORM FIELDS */}
               <div className="space-y-4">
-                {/* NAME - Read Only */}
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input 
-                      id="name" 
-                      value={userProfile.displayName || user.email?.split('@')[0] || ""} 
-                      className="pl-10 bg-muted/50" 
-                      readOnly 
-                    />
+                    <Input id="name" value={userProfile.displayName || user.email?.split('@')[0] || ""} className="pl-10 bg-muted/50" readOnly />
                   </div>
                 </div>
-
-                {/* EMAIL - Read Only */}
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input 
-                      id="email" 
-                      type="email" 
-                      value={user?.email || ""} 
-                      className="pl-10 bg-muted/50" 
-                      readOnly 
-                    />
+                    <Input id="email" type="email" value={user?.email || ""} className="pl-10 bg-muted/50" readOnly />
                   </div>
                 </div>
-
-                {/* PHONE - Editable */}
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input 
-                      id="phone" 
-                      type="tel" 
-                      placeholder="+254 712 345 678" 
-                      className={`pl-10 ${
-                        phoneNumber && !isValidPhone(phoneNumber) 
-                          ? "border-destructive focus:border-destructive" 
-                          : ""
-                      }`}
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+254 712 345 678"
+                      className={`pl-10 ${phoneNumber && !isValidPhone(phoneNumber) ? "border-destructive focus:border-destructive" : ""}`}
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
                     />
                   </div>
                   {phoneNumber && !isValidPhone(phoneNumber) && (
-                    <p className="text-xs text-destructive mt-1">
-                      Please enter a valid Kenyan phone number (e.g., +254 712 345 678)
-                    </p>
+                    <p className="text-xs text-destructive mt-1">Please enter a valid Kenyan phone number (e.g., +254 712 345 678)</p>
                   )}
                 </div>
-
-                {/* MEMBER SINCE - Read Only */}
                 <div className="space-y-2">
                   <Label>Member Since</Label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      value={memberSince}
-                      className="pl-10 bg-muted/50"
-                      readOnly
-                    />
+                    <Input value={memberSince} className="pl-10 bg-muted/50" readOnly />
                   </div>
                 </div>
-
-                {/* HOST STATS */}
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                   <div className="text-center p-4 bg-success/5 rounded-lg">
                     <div className="text-2xl font-bold text-success">{userProfile?.spaces?.length || 0}</div>
@@ -240,12 +195,10 @@ export default function HostProfile() {
                   </div>
                 </div>
               </div>
-
-              {/* ACTION BUTTONS */}
               <div className="flex gap-3 pt-4">
-                <Button 
-                  className="flex-1 bg-success hover:bg-success/90" 
-                  onClick={handleSave} 
+                <Button
+                  className="flex-1 bg-success hover:bg-success/90"
+                  onClick={handleSave}
                   disabled={saving || !phoneNumber.trim() || !isValidPhone(phoneNumber)}
                 >
                   {saving ? (
@@ -257,8 +210,8 @@ export default function HostProfile() {
                     "Save Changes"
                   )}
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="flex-1"
                   onClick={() => setPhoneNumber(userProfile?.phoneNumber || "")}
                   disabled={saving}

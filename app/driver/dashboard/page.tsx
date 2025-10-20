@@ -24,130 +24,154 @@ export default function DriverDashboard() {
   const [loading, setLoading] = useState(true)
   const [mapError, setMapError] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
-  const { user, userProfile, loading: authLoading } = useAuth()
-  const { db } = useFirebase() // useFirebase now throws if not initialized
+  const { user, userProfile, activeRole, loading: authLoading } = useAuth()
+  const { db } = useFirebase()
   const router = useRouter()
   const { toast } = useToast()
 
+  // Check if user has driver role
+  const hasDriverRole = userProfile?.roles?.includes("driver")
+
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
+    // Redirect if user doesn't have driver role
+    if (!authLoading && userProfile && !hasDriverRole) {
+      console.log("[Driver Dashboard] User doesn't have driver role, redirecting...")
+      router.push("/host/dashboard")
+      return
+    }
+  }, [authLoading, userProfile, hasDriverRole, router])
+
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined
 
     const loadSpaces = async () => {
       if (!db) {
-        console.error("[Driver Dashboard] Firestore instance not available");
-        setMapError("Firestore not initialized. Please refresh the page.");
-        setLoading(false);
-        return;
+        console.error("[Driver Dashboard] Firestore instance not available")
+        setMapError("Firestore not initialized. Please refresh the page.")
+        setLoading(false)
+        return
       }
 
-      if (unsubscribe) unsubscribe(); // Clean up previous listener
+      if (unsubscribe) unsubscribe()
       try {
-        console.log("[Driver Dashboard] Setting up listener for available spaces...");
+        console.log("[Driver Dashboard] Setting up listener for available spaces...")
         unsubscribe = await getParkingSpaces(db, (newSpaces) => {
-          console.log("[Driver Dashboard] Received spaces:", newSpaces.length);
-          setSpaces(newSpaces);
-          setFilteredSpaces(newSpaces); // Sync filteredSpaces with latest data
-          setLoading(false);
-        });
+          console.log("[Driver Dashboard] Received spaces:", newSpaces.length)
+          setSpaces(newSpaces)
+          setFilteredSpaces(newSpaces)
+          setLoading(false)
+        })
       } catch (error) {
-        console.error("[Driver Dashboard] Error setting up listener:", error);
-        setMapError("Failed to load parking spaces. Please try again.");
+        console.error("[Driver Dashboard] Error setting up listener:", error)
+        setMapError("Failed to load parking spaces. Please try again.")
         toast({
           title: "Connection Error",
           description: "Unable to load available spaces",
           variant: "destructive",
-        });
-        setLoading(false); // Ensure loading stops on error
+        })
+        setLoading(false)
       }
-    };
+    }
 
-    loadSpaces();
+    loadSpaces()
 
     const handleSpaceCreated = () => {
-      console.log("[Driver Dashboard] New space available, refreshing...");
-      loadSpaces();
-    };
+      console.log("[Driver Dashboard] New space available, refreshing...")
+      loadSpaces()
+    }
 
-    window.addEventListener('space:created', handleSpaceCreated);
-    window.addEventListener('focus', loadSpaces);
+    window.addEventListener('space:created', handleSpaceCreated)
+    window.addEventListener('focus', loadSpaces)
 
     return () => {
-      if (unsubscribe) unsubscribe();
-      window.removeEventListener('space:created', handleSpaceCreated);
-      window.removeEventListener('focus', loadSpaces);
-    };
-  }, [db, toast]);
+      if (unsubscribe) unsubscribe()
+      window.removeEventListener('space:created', handleSpaceCreated)
+      window.removeEventListener('focus', loadSpaces)
+    }
+  }, [db, toast])
 
   const handleSearch = useCallback(async (query: string, filters?: FilterOptions) => {
     if (!db) {
-      console.error("[Driver Dashboard] Firestore instance not available during search");
+      console.error("[Driver Dashboard] Firestore instance not available during search")
       toast({
         title: "Search Error",
         description: "Firestore not initialized. Please refresh the page.",
         variant: "destructive",
-      });
-      return;
+      })
+      return
     }
 
-    setLoading(true);
+    setLoading(true)
     try {
-      let unsubscribe: (() => void) | undefined;
+      let unsubscribe: (() => void) | undefined
       unsubscribe = await searchParkingSpaces(db, query, (newSpaces) => {
-        let filtered = [...newSpaces]; // Work with a copy to avoid mutation issues
+        let filtered = [...newSpaces]
         if (filters) {
           const applyFilters = (spaces: ParkingSpace[]) => {
             return spaces.filter(space => {
-              if (filters.spaceTypes?.length && !filters.spaceTypes.includes(space.spaceType || '')) return false;
+              if (filters.spaceTypes?.length && !filters.spaceTypes.includes(space.spaceType || '')) return false
               if (filters.priceRange && space.pricePerHour) {
-                if (space.pricePerHour < filters.priceRange[0] || space.pricePerHour > filters.priceRange[1]) return false;
+                if (space.pricePerHour < filters.priceRange[0] || space.pricePerHour > filters.priceRange[1]) return false
               }
               if (filters.minRating && space.rating) {
-                if (space.rating < filters.minRating) return false;
+                if (space.rating < filters.minRating) return false
               }
               if (filters.features?.length && space.features) {
-                const hasRequiredFeatures = filters.features.some(feat => (space.features || []).includes(feat));
-                if (!hasRequiredFeatures) return false;
+                const hasRequiredFeatures = filters.features.some(feat => (space.features || []).includes(feat))
+                if (!hasRequiredFeatures) return false
               }
-              return true;
-            });
-          };
-          filtered = applyFilters(filtered);
+              return true
+            })
+          }
+          filtered = applyFilters(filtered)
         }
-        setFilteredSpaces(filtered);
-        console.log("[Driver Dashboard] Filtered to", filtered.length, "spaces");
-      });
+        setFilteredSpaces(filtered)
+        console.log("[Driver Dashboard] Filtered to", filtered.length, "spaces")
+      })
 
     } catch (error) {
-      console.error("[Driver Dashboard] Search error:", error);
+      console.error("[Driver Dashboard] Search error:", error)
       toast({
         title: "Search Error",
         description: "Failed to search parking spaces",
         variant: "destructive",
-      });
+      })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-    return () => { if (unsubscribe) unsubscribe(); };
-  }, [db, toast]);
+    return () => { if (unsubscribe) unsubscribe() }
+  }, [db, toast])
 
-  if (authLoading || loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading parking spaces...</p>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     )
   }
 
-  if (!user || userProfile?.role !== "driver") {
+  if (!user || !hasDriverRole) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-          <p className="text-muted-foreground">Driver account required</p>
+          <p className="text-muted-foreground mb-4">Driver role required to access this page</p>
+          <Button onClick={() => router.push("/")}>Go Home</Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading parking spaces...</p>
         </div>
       </div>
     )
@@ -197,8 +221,8 @@ export default function DriverDashboard() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        setMapError(null);
-                        loadSpaces();
+                        setMapError(null)
+                        window.location.reload()
                       }}
                       className="mt-2"
                     >
@@ -227,26 +251,24 @@ export default function DriverDashboard() {
             </Card>
           </div>
 
-          {!loading && (
-            <div className="grid lg:grid-cols-[1fr_400px] gap-6">
-              <div className="lg:order-1 h-[500px] lg:h-[calc(100vh-300px)]">
-                <MapView
-                  spaces={filteredSpaces}
-                  selectedSpace={selectedSpace}
-                  onSpaceSelect={setSelectedSpace}
-                />
-              </div>
-              
-              <div className="lg:order-2">
-                <ParkingList
-                  spaces={filteredSpaces}
-                  onSpaceSelect={setSelectedSpace}
-                  selectedSpace={selectedSpace}
-                  onBookNow={setBookingSpace}
-                />
-              </div>
+          <div className="grid lg:grid-cols-[1fr_400px] gap-6">
+            <div className="lg:order-1 h-[500px] lg:h-[calc(100vh-300px)]">
+              <MapView
+                spaces={filteredSpaces}
+                selectedSpace={selectedSpace}
+                onSpaceSelect={setSelectedSpace}
+              />
             </div>
-          )}
+            
+            <div className="lg:order-2">
+              <ParkingList
+                spaces={filteredSpaces}
+                onSpaceSelect={setSelectedSpace}
+                selectedSpace={selectedSpace}
+                onBookNow={setBookingSpace}
+              />
+            </div>
+          </div>
         </div>
       </div>
 

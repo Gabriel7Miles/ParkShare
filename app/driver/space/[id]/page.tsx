@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useParams } from "next/navigation"
 import { DriverDashboardNav } from "@/components/driver/dashboard-nav"
 import { Button } from "@/components/ui/button"
@@ -32,7 +32,7 @@ export default function SpaceDetailsPage() {
   const { user, userProfile } = useAuth()
   const { toast } = useToast()
 
-  useEffect(() => {
+  const loadSpaceDetails = useCallback(async () => {
     if (!db) {
       console.error("[Space Details] Firestore not initialized")
       setLoading(false)
@@ -44,58 +44,56 @@ export default function SpaceDetailsPage() {
       return
     }
 
-    const loadSpaceDetails = async () => {
-      setLoading(true)
-      const id = params.id as string | undefined
-      if (!id) {
-        console.error("[Space Details] Invalid or undefined space ID:", params.id)
-        setLoading(false)
-        toast({
-          title: "Error",
-          description: "Invalid space ID",
-          variant: "destructive",
-        })
-        return
-      }
-
-      try {
-        // Fetch space data first
-        const spaceData = await getParkingSpaceById(db, id)
-        if (!spaceData) {
-          console.warn("[Space Details] Space not found for ID:", id)
-          setLoading(false)
-          return
-        }
-        setSpace(spaceData) // Set space even if reviews fail
-
-        // Attempt to fetch reviews and stats, handle permissions error
-        try {
-          const reviewsData = await getSpaceReviews(db, id)
-          const statsData = await getReviewStats(db, id)
-          setReviews(reviewsData)
-          setStats(statsData)
-        } catch (reviewError) {
-          console.warn("[Space Details] Failed to load reviews or stats:", reviewError)
-          toast({
-            title: "Warning",
-            description: "Unable to load reviews or stats due to permissions. Space details are still available.",
-            variant: "warning",
-          })
-        }
-      } catch (error) {
-        console.error("[Space Details] Error loading space details:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load space details. Please try again.",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
-      }
+    const id = params.id as string | undefined
+    if (!id) {
+      console.error("[Space Details] Invalid or undefined space ID:", params.id)
+      setLoading(false)
+      toast({
+        title: "Error",
+        description: "Invalid space ID",
+        variant: "destructive",
+      })
+      return
     }
 
+    setLoading(true)
+    try {
+      const spaceData = await getParkingSpaceById(db, id)
+      if (!spaceData) {
+        console.warn("[Space Details] Space not found for ID:", id)
+        setLoading(false)
+        return
+      }
+      setSpace(spaceData)
+
+      try {
+        const reviewsData = await getSpaceReviews(db, id)
+        const statsData = await getReviewStats(db, id)
+        setReviews(reviewsData)
+        setStats(statsData)
+      } catch (reviewError) {
+        console.warn("[Space Details] Failed to load reviews or stats:", reviewError)
+        toast({
+          title: "Warning",
+          description: "Unable to load reviews or stats due to permissions. Space details are still available.",
+          variant: "warning",
+        })
+      }
+    } catch (error) {
+      console.error("[Space Details] Error loading space details:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load space details. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }, [db, params.id, toast])
+
+  useEffect(() => {
     loadSpaceDetails()
-  }, [params.id, db, toast])
+  }, [loadSpaceDetails])
 
   const handleSubmitReview = async () => {
     if (!user || !userProfile || rating === 0) {
@@ -133,11 +131,7 @@ export default function SpaceDetailsPage() {
 
       setRating(0)
       setComment("")
-      // Refresh data with db
-      const reviewsData = await getSpaceReviews(db, params.id as string)
-      const statsData = await getReviewStats(db, params.id as string)
-      setReviews(reviewsData)
-      setStats(statsData)
+      await loadSpaceDetails()
     } catch (error: any) {
       toast({
         title: "Error",

@@ -1,3 +1,4 @@
+// components/auth/role-selection.tsx
 "use client"
 
 import { useState } from "react"
@@ -7,11 +8,23 @@ import { Car, Home } from "lucide-react"
 import type { UserRole } from "@/lib/firebase/auth"
 
 interface RoleSelectionProps {
-  onRoleSelect: (role: UserRole) => void
+  onRoleSelect: (roles: UserRole[]) => void
 }
 
 export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null)
+  const [selectedRoles, setSelectedRoles] = useState<UserRole[]>([])
+
+  const handleRoleToggle = (role: UserRole) => {
+    setSelectedRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
+    )
+  }
+
+  const handleContinue = () => {
+    if (selectedRoles.length > 0) {
+      onRoleSelect(selectedRoles)
+    }
+  }
 
   return (
     <div className="w-full max-w-4xl mx-auto p-6">
@@ -23,9 +36,9 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
       <div className="grid md:grid-cols-2 gap-6 mb-6">
         <Card
           className={`cursor-pointer transition-all hover:shadow-lg ${
-            selectedRole === "driver" ? "ring-2 ring-primary" : ""
+            selectedRoles.includes("driver") ? "ring-2 ring-primary" : ""
           }`}
-          onClick={() => setSelectedRole("driver")}
+          onClick={() => handleRoleToggle("driver")}
         >
           <CardHeader>
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
@@ -51,14 +64,24 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
                 Save up to 70% on parking
               </li>
             </ul>
+            <div className="mt-4">
+              <input
+                type="checkbox"
+                id="driver-role"
+                checked={selectedRoles.includes("driver")}
+                onChange={() => handleRoleToggle("driver")}
+                className="mr-2"
+              />
+              <label htmlFor="driver-role">Select Driver Role</label>
+            </div>
           </CardContent>
         </Card>
 
         <Card
           className={`cursor-pointer transition-all hover:shadow-lg ${
-            selectedRole === "host" ? "ring-2 ring-primary" : ""
+            selectedRoles.includes("host") ? "ring-2 ring-primary" : ""
           }`}
-          onClick={() => setSelectedRole("host")}
+          onClick={() => handleRoleToggle("host")}
         >
           <CardHeader>
             <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mb-4">
@@ -84,6 +107,16 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
                 Earn passive income
               </li>
             </ul>
+            <div className="mt-4">
+              <input
+                type="checkbox"
+                id="host-role"
+                checked={selectedRoles.includes("host")}
+                onChange={() => handleRoleToggle("host")}
+                className="mr-2"
+              />
+              <label htmlFor="host-role">Select Host Role</label>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -91,11 +124,11 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
       <div className="text-center">
         <Button
           size="lg"
-          onClick={() => selectedRole && onRoleSelect(selectedRole)}
-          disabled={!selectedRole}
+          onClick={handleContinue}
+          disabled={selectedRoles.length === 0}
           className="px-8"
         >
-          Continue as {selectedRole === "driver" ? "Driver" : selectedRole === "host" ? "Host" : "..."}
+          Continue as {selectedRoles.length === 1 ? selectedRoles[0] : "Multiple Roles"}
         </Button>
       </div>
     </div>

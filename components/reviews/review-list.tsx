@@ -8,6 +8,7 @@ import type { Review } from "@/lib/types/review"
 import { format } from "date-fns"
 import { markReviewHelpful, reportReview } from "@/lib/firebase/reviews"
 import { useToast } from "@/hooks/use-toast"
+import { useFirebase } from "@/contexts/firebase-context"
 
 interface ReviewListProps {
   reviews: Review[]
@@ -15,11 +16,21 @@ interface ReviewListProps {
 }
 
 export function ReviewList({ reviews, onReviewUpdate }: ReviewListProps) {
+  const { db } = useFirebase()
   const { toast } = useToast()
 
   const handleHelpful = async (reviewId: string) => {
+    if (!db) {
+      toast({
+        title: "Error",
+        description: "Firestore not initialized",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
-      await markReviewHelpful(reviewId)
+      await markReviewHelpful(db, reviewId)
       toast({
         title: "Thank you!",
         description: "Your feedback has been recorded",
@@ -35,10 +46,19 @@ export function ReviewList({ reviews, onReviewUpdate }: ReviewListProps) {
   }
 
   const handleReport = async (reviewId: string) => {
+    if (!db) {
+      toast({
+        title: "Error",
+        description: "Firestore not initialized",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (!confirm("Are you sure you want to report this review?")) return
 
     try {
-      await reportReview(reviewId)
+      await reportReview(db, reviewId)
       toast({
         title: "Review reported",
         description: "We'll review this report shortly",
@@ -82,7 +102,9 @@ export function ReviewList({ reviews, onReviewUpdate }: ReviewListProps) {
                   <div>
                     <p className="font-semibold">{review.driverName}</p>
                     <p className="text-sm text-muted-foreground">
-                      {format(new Date(review.createdAt), "MMM dd, yyyy")}
+                      {review.createdAt && !isNaN(new Date(review.createdAt).getTime())
+                        ? format(new Date(review.createdAt), "MMM dd, yyyy")
+                        : "Date unavailable"}
                     </p>
                   </div>
                   <div className="flex gap-1">
@@ -98,15 +120,22 @@ export function ReviewList({ reviews, onReviewUpdate }: ReviewListProps) {
                 <p className="text-sm leading-relaxed">{review.comment}</p>
 
                 <div className="flex items-center gap-4 pt-2">
-                  <Button variant="ghost" size="sm" className="gap-2 h-8" onClick={() => handleHelpful(review.id)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2 h-8"
+                    onClick={() => handleHelpful(review.id)}
+                    disabled={!review.id} // Prevent click if id is invalid
+                  >
                     <ThumbsUp className="w-4 h-4" />
-                    <span className="text-xs">Helpful ({review.helpful})</span>
+                    <span className="text-xs">Helpful ({review.helpful || 0})</span>
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="gap-2 h-8 text-muted-foreground hover:text-destructive"
                     onClick={() => handleReport(review.id)}
+                    disabled={!review.id || review.reported}
                   >
                     <Flag className="w-4 h-4" />
                     <span className="text-xs">Report</span>

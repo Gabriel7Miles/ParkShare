@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState } from "react"
 import { HostDashboardNav } from "@/components/host/dashboard-nav"
 import { SpaceCard } from "@/components/host/space-card"
 import { 
@@ -21,59 +21,71 @@ import { Badge } from "@/components/ui/badge"
 export default function HostDashboard() {
   const [spaces, setSpaces] = useState<ParkingSpace[]>([])
   const [loading, setLoading] = useState(true)
-  const [statsLoading, setStatsLoading] = useState(true) // Controlled separately
-  const { user, userProfile, loading: authLoading } = useAuth()
+  const [statsLoading, setStatsLoading] = useState(true)
+  const { user, userProfile, activeRole, loading: authLoading } = useAuth()
   const { db, storage } = useFirebase()
   const router = useRouter()
   const { toast } = useToast()
 
+  // Check if user has host role
+  const hasHostRole = userProfile?.roles?.includes("host")
+
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
+    // Redirect if user doesn't have host role
+    if (!authLoading && userProfile && !hasHostRole) {
+      console.log("[Host Dashboard] User doesn't have host role, redirecting...")
+      router.push("/driver/dashboard")
+      return
+    }
+  }, [authLoading, userProfile, hasHostRole, router])
+
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined
 
     const loadSpaces = async () => {
-      if (unsubscribe) unsubscribe(); // Clean up previous listener
-      if (user && db && storage && userProfile?.role === "host") {
+      if (unsubscribe) unsubscribe()
+      if (user && db && storage && hasHostRole) {
         try {
-          console.log("[Host Dashboard] Setting up listener for host:", user.uid);
-          setStatsLoading(true); // Start loading stats when fetching new data
+          console.log("[Host Dashboard] Setting up listener for host:", user.uid)
+          setStatsLoading(true)
           unsubscribe = await getHostSpaces(db, user.uid, (newSpaces) => {
-            console.log("[Host Dashboard] Received spaces:", newSpaces.length);
-            setSpaces(newSpaces);
-            setLoading(false); // General loading complete
-            setStatsLoading(false); // Stats loading complete once data is received
-          });
+            console.log("[Host Dashboard] Received spaces:", newSpaces.length)
+            setSpaces(newSpaces)
+            setLoading(false)
+            setStatsLoading(false)
+          })
         } catch (error) {
-          console.error("[Host Dashboard] Error setting up listener:", error);
+          console.error("[Host Dashboard] Error setting up listener:", error)
           toast({
             title: "Error Loading Spaces",
             description: "Failed to load your parking spaces. Check your connection or Firestore rules.",
             variant: "destructive",
-          });
-          setLoading(false);
-          setStatsLoading(false); // Stop stats loading on error
+          })
+          setLoading(false)
+          setStatsLoading(false)
         }
       } else {
-        setLoading(false);
-        setStatsLoading(false); // Stop loading if conditions aren't met
+        setLoading(false)
+        setStatsLoading(false)
       }
-    };
+    }
 
-    loadSpaces();
+    loadSpaces()
 
     const handleSpaceCreated = () => {
-      console.log("[Host Dashboard] New space detected, refreshing...");
-      loadSpaces();
-    };
+      console.log("[Host Dashboard] New space detected, refreshing...")
+      loadSpaces()
+    }
 
-    window.addEventListener('space:created', handleSpaceCreated);
-    window.addEventListener('focus', loadSpaces);
+    window.addEventListener('space:created', handleSpaceCreated)
+    window.addEventListener('focus', loadSpaces)
 
     return () => {
-      if (unsubscribe) unsubscribe();
-      window.removeEventListener('space:created', handleSpaceCreated);
-      window.removeEventListener('focus', loadSpaces);
-    };
-  }, [user, db, storage, userProfile, toast]);
+      if (unsubscribe) unsubscribe()
+      window.removeEventListener('space:created', handleSpaceCreated)
+      window.removeEventListener('focus', loadSpaces)
+    }
+  }, [user, db, storage, hasHostRole, toast])
 
   const handleDelete = async (spaceId: string) => {
     if (!confirm("Are you sure you want to delete this space? This will also delete all associated images. This action cannot be undone.")) return
@@ -110,7 +122,30 @@ export default function HostDashboard() {
   const availableSpaces = spaces.filter(s => s.availability === 'available').length
   const occupiedSpaces = spaces.filter(s => s.availability === 'occupied').length
 
-  if (authLoading || !user || !db || !storage || userProfile?.role !== "host") {
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-success mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user || !hasHostRole) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-success mx-auto mb-4" />
+          <p className="text-muted-foreground">Access denied - Host role required</p>
+          <Button onClick={() => router.push("/")} className="mt-4">Go Home</Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -193,14 +228,7 @@ export default function HostDashboard() {
             </div>
           )}
 
-          {loading ? (
-            <div className="flex items-center justify-center h-96">
-              <div className="text-center">
-                <Loader2 className="w-8 h-8 animate-spin text-success mx-auto mb-4" />
-                <span className="text-muted-foreground">Loading your spaces with images...</span>
-              </div>
-            </div>
-          ) : spaces.length === 0 ? (
+          {spaces.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg border-muted bg-muted/20 p-8 text-center">
               <Plus className="w-16 h-16 text-muted-foreground mb-4" />
               <h3 className="text-xl font-semibold mb-2">No Parking Spaces Yet</h3>
