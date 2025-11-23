@@ -251,23 +251,72 @@ export default function DriverDashboard() {
             </Card>
           </div>
 
-          <div className="grid lg:grid-cols-[1fr_400px] gap-6">
-            <div className="lg:order-1 h-[500px] lg:h-[calc(100vh-300px)]">
+          {/* Map Section - Full Width on Desktop */}
+          <div className="mb-6">
+            <div className="h-[400px] lg:h-[500px] w-full">
               <MapView
                 spaces={filteredSpaces}
                 selectedSpace={selectedSpace}
                 onSpaceSelect={setSelectedSpace}
               />
             </div>
-            
-            <div className="lg:order-2">
-              <ParkingList
-                spaces={filteredSpaces}
-                onSpaceSelect={setSelectedSpace}
-                selectedSpace={selectedSpace}
-                onBookNow={setBookingSpace}
-              />
+          </div>
+
+          {/* Parking Cards Grid - 3 per row on Desktop */}
+          <div>
+            <h2 className="text-2xl font-bold mb-4">Available Parking Spaces</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredSpaces.map((space) => (
+                <Card 
+                  key={space.id}
+                  className={`cursor-pointer transition-all hover:shadow-lg ${
+                    selectedSpace?.id === space.id ? 'ring-2 ring-primary' : ''
+                  }`}
+                  onClick={() => router.push(`/driver/space/${space.id}`)}
+                >
+                  <CardContent className="p-4">
+                    {space.images && space.images.length > 0 && (
+                      <div className="relative h-48 w-full mb-4 rounded-lg overflow-hidden">
+                        <img 
+                          src={space.images[0]} 
+                          alt={space.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <h3 className="font-semibold text-lg mb-2">{space.title}</h3>
+                    <p className="text-sm text-muted-foreground mb-2">{space.address}</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-2xl font-bold text-primary">
+                        KES {space.pricePerHour}
+                        <span className="text-sm font-normal text-muted-foreground">/hr</span>
+                      </span>
+                      {space.rating && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-yellow-500">★</span>
+                          <span className="text-sm font-medium">{space.rating.toFixed(1)}</span>
+                        </div>
+                      )}
+                    </div>
+                    <Button 
+                      className="w-full"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setBookingSpace(space)
+                      }}
+                    >
+                      Book Now
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
+            {filteredSpaces.length === 0 && (
+              <div className="text-center py-12">
+                <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No parking spaces found</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

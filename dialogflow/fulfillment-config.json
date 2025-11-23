@@ -1,0 +1,493 @@
+{
+  "fulfillment": {
+    "description": "Webhook fulfillment configuration for ParkShare Dialogflow integration",
+    "webhookUrl": "https://your-domain.com/api/dialogflow/webhook",
+    "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer YOUR_SECRET_KEY"
+    },
+    "intentsRequiringFulfillment": [
+      {
+        "intent": "FindParking-DateTime",
+        "action": "findParking.searchWithDateTime",
+        "description": "Search for available parking spaces",
+        "requiredParameters": ["location", "start-time"],
+        "optionalParameters": ["end-time", "duration"],
+        "webhookPayload": {
+          "action": "searchParking",
+          "parameters": {
+            "location": "$location",
+            "startTime": "$start-time",
+            "endTime": "$end-time",
+            "duration": "$duration",
+            "userId": "$user-id"
+          }
+        },
+        "expectedResponse": {
+          "spaces": [
+            {
+              "id": "string",
+              "title": "string",
+              "price": "number",
+              "rating": "number",
+              "distance": "string",
+              "reviews": "number"
+            }
+          ],
+          "resultsCount": "number"
+        }
+      },
+      {
+        "intent": "FilterParking-Price",
+        "action": "filterParking.byPrice",
+        "description": "Filter search results by price",
+        "requiredParameters": ["location"],
+        "optionalParameters": ["max-price"],
+        "webhookPayload": {
+          "action": "filterParking",
+          "parameters": {
+            "sortBy": "price",
+            "maxPrice": "$max-price",
+            "location": "$location",
+            "userId": "$user-id"
+          }
+        }
+      },
+      {
+        "intent": "FilterParking-Rating",
+        "action": "filterParking.byRating",
+        "description": "Filter search results by rating",
+        "webhookPayload": {
+          "action": "filterParking",
+          "parameters": {
+            "sortBy": "rating",
+            "location": "$location",
+            "userId": "$user-id"
+          }
+        }
+      },
+      {
+        "intent": "FilterParking-Distance",
+        "action": "filterParking.byDistance",
+        "description": "Filter search results by distance",
+        "webhookPayload": {
+          "action": "filterParking",
+          "parameters": {
+            "sortBy": "distance",
+            "location": "$location",
+            "userId": "$user-id"
+          }
+        }
+      },
+      {
+        "intent": "ViewParkingDetails",
+        "action": "viewParkingDetails",
+        "description": "Get detailed information about a parking space",
+        "requiredParameters": ["choice", "space-id"],
+        "webhookPayload": {
+          "action": "getParkingDetails",
+          "parameters": {
+            "spaceId": "$space-id",
+            "userId": "$user-id"
+          }
+        },
+        "expectedResponse": {
+          "space": {
+            "id": "string",
+            "title": "string",
+            "description": "string",
+            "address": "string",
+            "price": "number",
+            "rating": "number",
+            "reviews": "number",
+            "distance": "string",
+            "features": ["string"],
+            "type": "string",
+            "hostName": "string",
+            "hostPhone": "string",
+            "images": ["string"]
+          }
+        }
+      },
+      {
+        "intent": "BookParking-Confirm",
+        "action": "bookParking.confirmDetails",
+        "description": "Confirm booking details and calculate total price",
+        "requiredParameters": ["space-id", "start-time"],
+        "optionalParameters": ["end-time", "duration"],
+        "webhookPayload": {
+          "action": "calculateBooking",
+          "parameters": {
+            "spaceId": "$space-id",
+            "startTime": "$start-time",
+            "endTime": "$end-time",
+            "duration": "$duration",
+            "userId": "$user-id"
+          }
+        },
+        "expectedResponse": {
+          "bookingId": "string",
+          "spaceTitle": "string",
+          "startTime": "string",
+          "endTime": "string",
+          "duration": "string",
+          "totalPrice": "number"
+        }
+      },
+      {
+        "intent": "BookParking-Payment",
+        "action": "bookParking.requestPayment",
+        "description": "Initiate payment process",
+        "requiredParameters": ["booking-id", "total-price"],
+        "webhookPayload": {
+          "action": "createBooking",
+          "parameters": {
+            "bookingId": "$booking-id",
+            "userId": "$user-id",
+            "spaceId": "$space-id",
+            "startTime": "$start-time",
+            "endTime": "$end-time",
+            "totalPrice": "$total-price"
+          }
+        }
+      },
+      {
+        "intent": "Payment-PhoneNumber",
+        "action": "payment.initiateMpesa",
+        "description": "Initiate M-Pesa STK Push payment",
+        "requiredParameters": ["phone-number", "booking-id", "total-price"],
+        "webhookPayload": {
+          "action": "initiateMpesaPayment",
+          "parameters": {
+            "phoneNumber": "$phone-number",
+            "bookingId": "$booking-id",
+            "amount": "$total-price",
+            "userId": "$user-id"
+          }
+        },
+        "expectedResponse": {
+          "success": "boolean",
+          "checkoutRequestId": "string",
+          "merchantRequestId": "string",
+          "responseCode": "string",
+          "responseDescription": "string"
+        }
+      },
+      {
+        "intent": "ViewBookings",
+        "action": "viewBookings.list",
+        "description": "Retrieve user's bookings",
+        "webhookPayload": {
+          "action": "getUserBookings",
+          "parameters": {
+            "userId": "$user-id"
+          }
+        },
+        "expectedResponse": {
+          "activeBookings": [
+            {
+              "id": "string",
+              "spaceTitle": "string",
+              "startTime": "string",
+              "endTime": "string",
+              "status": "string"
+            }
+          ],
+          "upcomingBookings": ["object"],
+          "completedBookings": ["object"],
+          "activeCount": "number",
+          "upcomingCount": "number",
+          "completedCount": "number"
+        }
+      },
+      {
+        "intent": "CancelBooking",
+        "action": "cancelBooking.request",
+        "description": "Get booking details for cancellation",
+        "requiredParameters": ["booking-id"],
+        "webhookPayload": {
+          "action": "getBookingDetails",
+          "parameters": {
+            "bookingId": "$booking-id",
+            "userId": "$user-id"
+          }
+        },
+        "expectedResponse": {
+          "booking": {
+            "id": "string",
+            "spaceTitle": "string",
+            "startTime": "string",
+            "endTime": "string",
+            "totalPrice": "number",
+            "refundAmount": "number"
+          }
+        }
+      },
+      {
+        "intent": "CancelBooking-Confirm",
+        "action": "cancelBooking.confirm",
+        "description": "Confirm and process booking cancellation",
+        "requiredParameters": ["booking-id"],
+        "webhookPayload": {
+          "action": "cancelBooking",
+          "parameters": {
+            "bookingId": "$booking-id",
+            "userId": "$user-id"
+          }
+        },
+        "expectedResponse": {
+          "success": "boolean",
+          "refundAmount": "number",
+          "message": "string"
+        }
+      },
+      {
+        "intent": "AddSpace-Location",
+        "action": "addSpace.setLocation",
+        "description": "Validate and geocode parking space address",
+        "requiredParameters": ["address"],
+        "webhookPayload": {
+          "action": "validateAddress",
+          "parameters": {
+            "address": "$address",
+            "userId": "$user-id"
+          }
+        },
+        "expectedResponse": {
+          "valid": "boolean",
+          "formattedAddress": "string",
+          "coordinates": {
+            "lat": "number",
+            "lng": "number"
+          }
+        }
+      },
+      {
+        "intent": "AddSpace-Confirm",
+        "action": "addSpace.publish",
+        "description": "Create new parking space listing",
+        "requiredParameters": [
+          "address",
+          "space-type",
+          "hourly-rate",
+          "features",
+          "title",
+          "description"
+        ],
+        "webhookPayload": {
+          "action": "createParkingSpace",
+          "parameters": {
+            "hostId": "$user-id",
+            "address": "$address",
+            "location": "$location-coordinates",
+            "spaceType": "$space-type",
+            "hourlyRate": "$hourly-rate",
+            "dailyRate": "$daily-rate",
+            "features": "$features",
+            "title": "$title",
+            "description": "$description"
+          }
+        },
+        "expectedResponse": {
+          "success": "boolean",
+          "spaceId": "string",
+          "message": "string"
+        }
+      },
+      {
+        "intent": "ViewEarnings",
+        "action": "viewEarnings.summary",
+        "description": "Get host earnings summary",
+        "webhookPayload": {
+          "action": "getEarnings",
+          "parameters": {
+            "hostId": "$user-id"
+          }
+        },
+        "expectedResponse": {
+          "totalEarnings": "number",
+          "monthlyEarnings": "number",
+          "completedBookings": "number",
+          "pendingPayouts": "number",
+          "lastPayout": "number",
+          "payoutDate": "string",
+          "nextPayoutDate": "string"
+        }
+      },
+      {
+        "intent": "ManageSpaces",
+        "action": "manageSpaces.list",
+        "description": "Get list of host's parking spaces",
+        "webhookPayload": {
+          "action": "getHostSpaces",
+          "parameters": {
+            "hostId": "$user-id"
+          }
+        },
+        "expectedResponse": {
+          "spaces": [
+            {
+              "id": "string",
+              "title": "string",
+              "address": "string",
+              "price": "number",
+              "status": "string",
+              "activeBookings": "number"
+            }
+          ],
+          "spacesCount": "number"
+        }
+      },
+      {
+        "intent": "ReviewSpace-SelectBooking",
+        "action": "review.selectBooking",
+        "description": "Get booking details for review",
+        "requiredParameters": ["booking-id"],
+        "webhookPayload": {
+          "action": "getBookingForReview",
+          "parameters": {
+            "bookingId": "$booking-id",
+            "userId": "$user-id"
+          }
+        },
+        "expectedResponse": {
+          "booking": {
+            "id": "string",
+            "spaceId": "string",
+            "spaceTitle": "string",
+            "date": "string"
+          }
+        }
+      },
+      {
+        "intent": "ReviewSpace-Comment",
+        "action": "review.submit",
+        "description": "Submit review for parking space",
+        "requiredParameters": ["booking-id", "rating"],
+        "optionalParameters": ["comment"],
+        "webhookPayload": {
+          "action": "submitReview",
+          "parameters": {
+            "bookingId": "$booking-id",
+            "spaceId": "$space-id",
+            "driverId": "$user-id",
+            "rating": "$rating",
+            "comment": "$comment"
+          }
+        },
+        "expectedResponse": {
+          "success": "boolean",
+          "reviewId": "string",
+          "message": "string"
+        }
+      },
+      {
+        "intent": "Support-Escalate",
+        "action": "support.escalate",
+        "description": "Create support ticket",
+        "webhookPayload": {
+          "action": "createSupportTicket",
+          "parameters": {
+            "userId": "$user-id",
+            "category": "$category",
+            "description": "$issue-description",
+            "userEmail": "$user-email",
+            "userPhone": "$user-phone"
+          }
+        },
+        "expectedResponse": {
+          "ticketId": "string",
+          "estimatedResponseTime": "string"
+        }
+      },
+      {
+        "intent": "SwitchRole",
+        "action": "switchRole",
+        "description": "Switch user role or enable multiple roles",
+        "requiredParameters": ["target-role"],
+        "webhookPayload": {
+          "action": "updateUserRole",
+          "parameters": {
+            "userId": "$user-id",
+            "targetRole": "$target-role"
+          }
+        },
+        "expectedResponse": {
+          "success": "boolean",
+          "currentRole": "string",
+          "availableRoles": ["string"]
+        }
+      }
+    ]
+  },
+  "webhookImplementation": {
+    "description": "Guide for implementing webhook endpoints",
+    "endpoints": [
+      {
+        "path": "/api/dialogflow/webhook",
+        "method": "POST",
+        "requestFormat": {
+          "responseId": "string",
+          "queryResult": {
+            "queryText": "string",
+            "action": "string",
+            "parameters": "object",
+            "allRequiredParamsPresent": "boolean",
+            "fulfillmentText": "string",
+            "outputContexts": ["object"],
+            "intent": {
+              "name": "string",
+              "displayName": "string"
+            }
+          },
+          "session": "string"
+        },
+        "responseFormat": {
+          "fulfillmentText": "string",
+          "fulfillmentMessages": [
+            {
+              "text": {
+                "text": ["string"]
+              }
+            }
+          ],
+          "outputContexts": ["object"],
+          "payload": "object"
+        }
+      }
+    ],
+    "errorHandling": {
+      "fallbackResponse": "I'm sorry, I encountered an error processing your request. Please try again or contact support.",
+      "timeoutMs": 5000,
+      "retryStrategy": "exponential-backoff"
+    }
+  },
+  "integrations": {
+    "firebase": {
+      "description": "Integration with Firebase services",
+      "services": ["auth", "firestore", "storage"],
+      "collections": {
+        "users": "/users/{userId}",
+        "parkingSpaces": "/parkingSpaces/{spaceId}",
+        "bookings": "/bookings/{bookingId}",
+        "reviews": "/reviews/{reviewId}",
+        "transactions": "/transactions/{transactionId}"
+      }
+    },
+    "mpesa": {
+      "description": "M-Pesa payment integration",
+      "endpoints": {
+        "stkPush": "/api/mpesa/stk-push",
+        "callback": "/api/mpesa/callback",
+        "token": "/api/mpesa/token"
+      }
+    },
+    "googleMaps": {
+      "description": "Google Maps API for geocoding and distance calculation",
+      "apis": ["Geocoding API", "Distance Matrix API", "Places API"]
+    }
+  }
+}
+
+
+

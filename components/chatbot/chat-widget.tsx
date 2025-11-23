@@ -1,135 +1,182 @@
 "use client"
 
+import React from "react"  // ← THIS LINE FIXES THE ERROR
 import { useState, useRef, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { MessageSquare, X, Send, Loader2 } from "lucide-react"
-import type { ChatMessage } from "@/lib/types/chat"
 import { useAuth } from "@/contexts/auth-context"
+
+// === CHATBASE CONFIG ===
+const CHATBASE_BOT_ID = "gwPtDlzvkWYz03H8JnUFU"
+const CHATBASE_DOMAIN = "www.chatbase.co"
+
+async function getChatbaseToken(userId: string, email: string): Promise<string> {
+  const res = await fetch("/api/chatbase/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, email }),
+  })
+
+  if (!res.ok) throw new Error("Failed to get Chatbase token")
+  const data = await res.json()
+  return data.token
+}
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false)
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content: "Hi! I'm your ParkShare assistant. How can I help you today?",
-      timestamp: new Date(),
-    },
+  const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([
+    { role: "assistant", content: "Hi! How can I help you today?" },
   ])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const { userProfile } = useAuth()
+  const { user, userProfile } = useAuth()
 
+  // Load Chatbase embed script
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    if (typeof window === "undefined" || window.chatbase) return
+
+    const script = document.createElement("script")
+    script.src = "https://www.chatbase.co/embed.min.js"
+    script.id = CHATBASE_BOT_ID
+    script.domain = CHATBASE_DOMAIN
+    script.async = true
+    document.body.appendChild(script)
+
+    window.chatbase = (...args: any[]) => {
+      ;(window.chatbase as any).q.push(args)
     }
+    ;(window.chatbase as any).q = []
+
+    return () => {
+      document.getElementById(CHATBASE_BOT_ID)?.remove()
+    }
+  }, [])
+
+  // Identify user when logged in
+  useEffect(() => {
+    if (!user || !userProfile || !isOpen) return
+
+    getChatbaseToken(user.uid, userProfile.email || user.email || "")
+      .then((token) => {
+        if (window.chatbase) {
+          ;(window.chatbase as any)("identify", { token })
+        }
+      })
+      .catch(console.error)
+  }, [user, userProfile, isOpen])
+
+  // Auto-scroll
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  const handleSend = async () => {
-    if (!input.trim()) return
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || loading) return
 
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input,
-      timestamp: new Date(),
-    }
-
-    setMessages((prev) => [...prev, userMessage])
+    const userMessage = input.trim()
+    setMessages(prev => [...prev, { role: "user", content: userMessage }])
     setInput("")
     setLoading(true)
 
-    // Simulate AI response
-    setTimeout(() => {
-      const responses = [
-        "I can help you find parking spaces near your location. What area are you looking for?",
-        "To book a parking space, go to the Find Parking page and search for available spots in your desired location.",
-        "You can manage your bookings from the My Bookings page. There you can view, modify, or cancel your reservations.",
-        "If you're a host, you can add new parking spaces from your dashboard. Just click the 'Add Space' button.",
-        "For payment issues, please check your payment method in your profile settings or contact our support team.",
-        "You can leave a review for any completed booking from your bookings page. Your feedback helps other users!",
-      ]
+    if (window.chatbase) {
+      ;(window.chatbase as any)("send", "user_message", userMessage)
+    }
 
-      const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: responses[Math.floor(Math.random() * responses.length)],
-        timestamp: new Date(),
+    const handler = (event: any) => {
+      if (event.type === "assistant_message" && event.message) {
+        setMessages(prev => [...prev, { role: "assistant", content: event.message }])
+        setLoading(false)
+        window.removeEventListener("chatbase", handler)
       }
+    }
 
-      setMessages((prev) => [...prev, assistantMessage])
-      setLoading(false)
-    }, 1000)
+    window.addEventListener("chatbase", handler as EventListener)
+
+    setTimeout(() => {
+      if (loading) {
+        setMessages(prev => [...prev, { role: "assistant", content: "I'm having trouble connecting. Please try again." }])
+        setLoading(false)
+      }
+    }, 15000)
   }
 
   if (!isOpen) {
     return (
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl bg-primary hover:bg-primary/90 z-50 transition-all hover:scale-110"
         size="icon"
       >
-        <MessageSquare className="w-6 h-6" />
+        <MessageSquare className="w-7 h-7" />
       </Button>
     )
   }
 
   return (
-    <Card className="fixed bottom-6 right-6 w-96 h-[500px] shadow-xl z-50 flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b">
-        <CardTitle className="text-lg">ParkShare Assistant</CardTitle>
-        <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
-          <X className="w-4 h-4" />
+    <Card className="fixed bottom-6 right-6 w-96 h-[600px] shadow-2xl z-50 flex flex-col border-0">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 border-b bg-primary text-primary-foreground rounded-t-lg">
+        <CardTitle className="text-lg font-semibold">ParkShare Assistant</CardTitle>
+        <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-primary-foreground hover:bg-primary-foreground/20">
+          <X className="w-5 h-5" />
         </Button>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col p-0">
-        <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-          <div className="space-y-4">
-            {messages.map((message) => (
-              <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+
+      <CardContent className="flex-1 flex flex-col p-0 bg-background">
+        <ScrollArea className="flex-1 px-4 py-3">
+          <div className="space-y-4 pb-20">
+            {messages.map((msg, i) => (
+              <div
+                key={i}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-in slide-in-from-bottom-2`}
+              >
                 <div
-                  className={`max-w-[80%] rounded-lg p-3 ${
-                    message.role === "user"
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${
+                    msg.role === "user"
                       ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground"
+                      : "bg-muted"
                   }`}
                 >
-                  <p className="text-sm leading-relaxed">{message.content}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                 </div>
               </div>
             ))}
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-secondary text-secondary-foreground rounded-lg p-3">
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                <div className="bg-muted rounded-2xl px-4 py-3">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                 </div>
               </div>
-            )}
+            ))}
+            <div ref={scrollRef} />
           </div>
         </ScrollArea>
-        <div className="p-4 border-t">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              handleSend()
-            }}
-            className="flex gap-2"
-          >
+
+        <div className="p-4 border-t bg-background">
+          <form onSubmit={handleSend} className="flex gap-2">
             <Input
-              placeholder="Type your message..."
+              placeholder="Ask me anything about parking..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={loading}
+              className="flex-1"
             />
-            <Button type="submit" size="icon" disabled={loading || !input.trim()}>
+            <Button
+              type="submit"
+              size="icon"
+              disabled={loading || !input.trim()}
+              className="rounded-full"
+            >
               <Send className="w-4 h-4" />
             </Button>
           </form>
+          <p className="text-xs text-center text-muted-foreground mt-2">
+            Powered by Chatbase AI
+          </p>
         </div>
       </CardContent>
     </Card>

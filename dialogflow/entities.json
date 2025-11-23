@@ -1,0 +1,366 @@
+{
+  "entities": [
+    {
+      "name": "parking-type",
+      "values": [
+        {
+          "value": "driveway",
+          "synonyms": ["driveway", "drive way", "private driveway", "residential driveway"]
+        },
+        {
+          "value": "garage",
+          "synonyms": ["garage", "covered garage", "private garage", "indoor parking"]
+        },
+        {
+          "value": "lot",
+          "synonyms": ["lot", "parking lot", "car park", "open lot", "outdoor parking"]
+        },
+        {
+          "value": "street",
+          "synonyms": ["street", "street parking", "roadside", "on-street", "curb parking"]
+        }
+      ]
+    },
+    {
+      "name": "booking-id",
+      "values": [
+        {
+          "value": "BK001",
+          "synonyms": ["BK001", "booking 001", "booking BK001"]
+        },
+        {
+          "value": "BK002",
+          "synonyms": ["BK002", "booking 002", "booking BK002"]
+        }
+      ],
+      "automatedExpansion": true
+    },
+    {
+      "name": "booking-status",
+      "values": [
+        {
+          "value": "pending",
+          "synonyms": ["pending", "awaiting", "waiting"]
+        },
+        {
+          "value": "confirmed",
+          "synonyms": ["confirmed", "accepted", "approved"]
+        },
+        {
+          "value": "active",
+          "synonyms": ["active", "ongoing", "current", "in progress"]
+        },
+        {
+          "value": "completed",
+          "synonyms": ["completed", "finished", "done", "past"]
+        },
+        {
+          "value": "cancelled",
+          "synonyms": ["cancelled", "canceled", "removed", "deleted"]
+        }
+      ]
+    },
+    {
+      "name": "payment-method",
+      "values": [
+        {
+          "value": "mpesa",
+          "synonyms": ["mpesa", "m-pesa", "m pesa", "mobile money", "safaricom"]
+        },
+        {
+          "value": "card",
+          "synonyms": ["card", "credit card", "debit card", "visa", "mastercard"]
+        },
+        {
+          "value": "paypal",
+          "synonyms": ["paypal", "pay pal"]
+        }
+      ]
+    },
+    {
+      "name": "user-role",
+      "values": [
+        {
+          "value": "driver",
+          "synonyms": ["driver", "parker", "customer", "renter"]
+        },
+        {
+          "value": "host",
+          "synonyms": ["host", "owner", "landlord", "space owner", "parking owner"]
+        },
+        {
+          "value": "admin",
+          "synonyms": ["admin", "administrator", "moderator"]
+        }
+      ]
+    },
+    {
+      "name": "time-period",
+      "values": [
+        {
+          "value": "hourly",
+          "synonyms": ["hourly", "per hour", "by the hour", "/hour", "hour"]
+        },
+        {
+          "value": "daily",
+          "synonyms": ["daily", "per day", "by the day", "/day", "day"]
+        },
+        {
+          "value": "weekly",
+          "synonyms": ["weekly", "per week", "by the week", "/week", "week"]
+        },
+        {
+          "value": "monthly",
+          "synonyms": ["monthly", "per month", "by the month", "/month", "month"]
+        }
+      ]
+    },
+    {
+      "name": "parking-features",
+      "values": [
+        {
+          "value": "covered",
+          "synonyms": ["covered", "roofed", "sheltered", "indoor"]
+        },
+        {
+          "value": "security",
+          "synonyms": ["security", "secured", "security guard", "guarded", "watchman"]
+        },
+        {
+          "value": "cctv",
+          "synonyms": ["cctv", "camera", "cameras", "surveillance", "video surveillance"]
+        },
+        {
+          "value": "ev-charging",
+          "synonyms": ["ev charging", "electric vehicle charging", "charging station", "ev charger", "electric charging"]
+        },
+        {
+          "value": "24-7-access",
+          "synonyms": ["24/7", "24 7", "24 hour access", "always open", "round the clock", "anytime access"]
+        },
+        {
+          "value": "well-lit",
+          "synonyms": ["well lit", "good lighting", "illuminated", "bright"]
+        },
+        {
+          "value": "disabled-access",
+          "synonyms": ["disabled access", "wheelchair accessible", "handicap accessible", "disability friendly"]
+        },
+        {
+          "value": "gated",
+          "synonyms": ["gated", "gate", "fenced", "enclosed"]
+        },
+        {
+          "value": "automated-gate",
+          "synonyms": ["automated gate", "automatic gate", "remote gate", "electric gate"]
+        }
+      ]
+    },
+    {
+      "name": "vehicle-type",
+      "values": [
+        {
+          "value": "car",
+          "synonyms": ["car", "sedan", "vehicle", "automobile"]
+        },
+        {
+          "value": "suv",
+          "synonyms": ["suv", "4x4", "jeep", "off-road"]
+        },
+        {
+          "value": "motorcycle",
+          "synonyms": ["motorcycle", "motorbike", "bike", "scooter", "boda boda"]
+        },
+        {
+          "value": "van",
+          "synonyms": ["van", "minivan", "minibus"]
+        },
+        {
+          "value": "truck",
+          "synonyms": ["truck", "pickup", "lorry"]
+        },
+        {
+          "value": "bus",
+          "synonyms": ["bus", "coach"]
+        }
+      ]
+    },
+    {
+      "name": "sort-preference",
+      "values": [
+        {
+          "value": "price-low",
+          "synonyms": ["price", "cheapest", "lowest price", "most affordable", "budget"]
+        },
+        {
+          "value": "rating",
+          "synonyms": ["rating", "highest rated", "best reviews", "top rated", "best rated"]
+        },
+        {
+          "value": "distance",
+          "synonyms": ["distance", "nearest", "closest", "proximity", "nearby"]
+        },
+        {
+          "value": "availability",
+          "synonyms": ["availability", "available", "open", "free"]
+        }
+      ]
+    },
+    {
+      "name": "support-category",
+      "values": [
+        {
+          "value": "payment",
+          "synonyms": ["payment", "billing", "transaction", "refund", "money"]
+        },
+        {
+          "value": "booking",
+          "synonyms": ["booking", "reservation", "scheduling"]
+        },
+        {
+          "value": "account",
+          "synonyms": ["account", "profile", "login", "password", "registration"]
+        },
+        {
+          "value": "technical",
+          "synonyms": ["technical", "bug", "error", "not working", "broken"]
+        },
+        {
+          "value": "host-support",
+          "synonyms": ["host", "listing", "space", "earnings"]
+        },
+        {
+          "value": "safety",
+          "synonyms": ["safety", "security", "incident", "report"]
+        }
+      ]
+    },
+    {
+      "name": "kenyan-locations",
+      "values": [
+        {
+          "value": "Nairobi",
+          "synonyms": ["Nairobi", "NRB", "Nairobi city", "downtown Nairobi"]
+        },
+        {
+          "value": "Westlands",
+          "synonyms": ["Westlands", "Westlands area"]
+        },
+        {
+          "value": "Kilimani",
+          "synonyms": ["Kilimani", "Kilimani area"]
+        },
+        {
+          "value": "Karen",
+          "synonyms": ["Karen", "Karen area"]
+        },
+        {
+          "value": "Lavington",
+          "synonyms": ["Lavington", "Lavington area"]
+        },
+        {
+          "value": "Parklands",
+          "synonyms": ["Parklands", "Parklands area"]
+        },
+        {
+          "value": "CBD",
+          "synonyms": ["CBD", "Central Business District", "downtown", "city center"]
+        },
+        {
+          "value": "Upperhill",
+          "synonyms": ["Upperhill", "Upper Hill"]
+        },
+        {
+          "value": "Kileleshwa",
+          "synonyms": ["Kileleshwa", "Kileleshwa area"]
+        },
+        {
+          "value": "Gigiri",
+          "synonyms": ["Gigiri", "Gigiri area", "UN area"]
+        },
+        {
+          "value": "Mombasa",
+          "synonyms": ["Mombasa", "Mombasa city"]
+        },
+        {
+          "value": "Kisumu",
+          "synonyms": ["Kisumu", "Kisumu city"]
+        },
+        {
+          "value": "Nakuru",
+          "synonyms": ["Nakuru", "Nakuru town"]
+        },
+        {
+          "value": "Eldoret",
+          "synonyms": ["Eldoret", "Eldoret town"]
+        }
+      ],
+      "automatedExpansion": true
+    },
+    {
+      "name": "common-landmarks",
+      "values": [
+        {
+          "value": "JKIA",
+          "synonyms": ["JKIA", "Jomo Kenyatta International Airport", "airport", "Nairobi airport"]
+        },
+        {
+          "value": "Sarit Centre",
+          "synonyms": ["Sarit Centre", "Sarit Center", "Sarit"]
+        },
+        {
+          "value": "Two Rivers Mall",
+          "synonyms": ["Two Rivers", "Two Rivers Mall", "2 Rivers"]
+        },
+        {
+          "value": "Westgate Mall",
+          "synonyms": ["Westgate", "Westgate Mall"]
+        },
+        {
+          "value": "Village Market",
+          "synonyms": ["Village Market", "The Village Market"]
+        },
+        {
+          "value": "Yaya Centre",
+          "synonyms": ["Yaya", "Yaya Centre", "Yaya Center"]
+        },
+        {
+          "value": "Junction Mall",
+          "synonyms": ["Junction", "Junction Mall", "The Junction"]
+        },
+        {
+          "value": "Garden City Mall",
+          "synonyms": ["Garden City", "Garden City Mall"]
+        },
+        {
+          "value": "Galleria Mall",
+          "synonyms": ["Galleria", "Galleria Mall"]
+        },
+        {
+          "value": "Nairobi Hospital",
+          "synonyms": ["Nairobi Hospital", "The Nairobi Hospital"]
+        },
+        {
+          "value": "Kenyatta Hospital",
+          "synonyms": ["KNH", "Kenyatta Hospital", "Kenyatta National Hospital"]
+        },
+        {
+          "value": "Aga Khan Hospital",
+          "synonyms": ["Aga Khan", "Aga Khan Hospital"]
+        },
+        {
+          "value": "University of Nairobi",
+          "synonyms": ["UoN", "University of Nairobi", "Nairobi University"]
+        },
+        {
+          "value": "Kenyatta University",
+          "synonyms": ["KU", "Kenyatta University"]
+        }
+      ],
+      "automatedExpansion": true
+    }
+  ]
+}
+
+
+

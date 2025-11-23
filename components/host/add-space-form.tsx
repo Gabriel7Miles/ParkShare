@@ -8,6 +8,7 @@ import { useFirebase } from "@/contexts/firebase-context"
 import { createParkingSpace } from "@/lib/firebase/host"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import type { ParkingSpace } from "@/lib/types/parking"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,8 +36,10 @@ export function AddSpaceForm() {
     spaceType: "driveway" as const,
     features: [] as string[],
     vehicleTypes: [] as string[],
-    numberOfSpaces: "1",
+    totalSpots: "1",
   })
+  
+  const [spotLabels, setSpotLabels] = useState<string[]>(["1"])
 
   const { user, userProfile } = useAuth()
   const { db, storage } = useFirebase()
@@ -146,6 +149,32 @@ export function AddSpaceForm() {
         : [...prev.vehicleTypes, type],
     }))
   }
+  
+  // Handle total spots change
+  const handleSpotsChange = (value: string) => {
+    const numSpots = parseInt(value) || 1
+    setFormData((prev) => ({ ...prev, totalSpots: value }))
+    
+    // Update spot labels array
+    const currentLabels = [...spotLabels]
+    if (numSpots > currentLabels.length) {
+      // Add more spots
+      for (let i = currentLabels.length; i < numSpots; i++) {
+        currentLabels.push(`${i + 1}`)
+      }
+    } else if (numSpots < currentLabels.length) {
+      // Remove excess spots
+      currentLabels.splice(numSpots)
+    }
+    setSpotLabels(currentLabels)
+  }
+  
+  // Update individual spot label
+  const updateSpotLabel = (index: number, value: string) => {
+    const updated = [...spotLabels]
+    updated[index] = value.toUpperCase()
+    setSpotLabels(updated)
+  }
 
   // ✅ GEOLOCATION - Get user's location
   const getCurrentLocation = () => {
@@ -222,6 +251,14 @@ export function AddSpaceForm() {
           endDate: new Date(range.endDate),
         }))
 
+      // Create spots array with labels
+      const spots = spotLabels.map(label => ({
+        label: label,
+        isAvailable: true,
+        // Don't include undefined values - Firestore doesn't allow them
+        // These fields will be added when a booking is made
+      }))
+
       const baseData = {
         hostId: user.uid,
         hostName: userProfile.displayName || user.email?.split('@')[0] || 'Host',
@@ -237,7 +274,8 @@ export function AddSpaceForm() {
         reviewCount: 0,
         spaceType: formData.spaceType,
         vehicleTypes: formData.vehicleTypes,
-        numberOfSpaces: Number.parseInt(formData.numberOfSpaces) || 1,
+        totalSpots: Number.parseInt(formData.totalSpots) || 1,
+        spots: spots,
       }
 
       const optionalFields = {
@@ -247,13 +285,13 @@ export function AddSpaceForm() {
         ...(availableDates.length > 0 && { availableDates }),
       }
 
-      const spaceData = { ...baseData, ...optionalFields }
+      const spaceData = { ...baseData, ...optionalFields } as Omit<ParkingSpace, "id" | "createdAt"> & { images: File[] }
       
       console.log('[v0] Creating space with data:', {
         ...spaceData,
         images: spaceData.images.length,
         location: `${spaceData.location.lat}, ${spaceData.location.lng}`,
-        hostPhone: spaceData.hostPhone ? 'present' : 'excluded',
+        hostPhone: 'hostPhone' in spaceData ? 'present' : 'excluded',
       })
       
       const spaceId = await createParkingSpace(db, storage, spaceData)
@@ -281,8 +319,9 @@ export function AddSpaceForm() {
         spaceType: "driveway",
         features: [],
         vehicleTypes: [],
-        numberOfSpaces: "1",
+        totalSpots: "1",
       })
+      setSpotLabels(["1"])
       setSelectedFiles([])
       setImagePreviews([])
       setAvailabilityRanges([{ startDate: "", endDate: "" }])
@@ -416,6 +455,51 @@ export function AddSpaceForm() {
                 value={formData.pricePerMonth}
                 onChange={(e) => setFormData({ ...formData, pricePerMonth: e.target.value })}
               />
+            </div>
+          </div>
+
+          {/* Parking Spots Configuration */}
+          <div className="space-y-4 border-t pt-4">
+            <div>
+              <Label htmlFor="totalSpots">Number of Parking Spots *</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                How many individual parking spots are available at this location?
+              </p>
+              <Input
+                id="totalSpots"
+                type="number"
+                min="1"
+                max="50"
+                value={formData.totalSpots}
+                onChange={(e) => handleSpotsChange(e.target.value)}
+                required
+                className="max-w-xs"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label>Spot Labels</Label>
+              <p className="text-xs text-muted-foreground">
+                Give each parking spot a unique label (e.g., 1A, 1B, Spot 1, etc.)
+              </p>
+              <div className="grid md:grid-cols-4 gap-3">
+                {spotLabels.map((label, index) => (
+                  <div key={index} className="space-y-1">
+                    <Label htmlFor={`spot-${index}`} className="text-xs">
+                      Spot {index + 1}
+                    </Label>
+                    <Input
+                      id={`spot-${index}`}
+                      type="text"
+                      value={label}
+                      onChange={(e) => updateSpotLabel(index, e.target.value)}
+                      placeholder={`Spot ${index + 1}`}
+                      maxLength={10}
+                      required
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 

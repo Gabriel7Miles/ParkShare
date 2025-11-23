@@ -1,0 +1,293 @@
+{
+  "sampleDialogues": [
+    {
+      "title": "Driver Finding and Booking Parking",
+      "scenario": "A driver searches for parking, finds a space, and completes booking",
+      "conversation": [
+        {
+          "user": "Hi",
+          "bot": "Hello! Welcome to ParkShare! 🚗 I'm your parking assistant. I can help you find parking spaces, manage bookings, or assist with hosting. What would you like to do today?",
+          "intent": "Welcome"
+        },
+        {
+          "user": "I need parking",
+          "bot": "I'd be happy to help you find parking! Where are you looking to park? You can tell me an address, landmark, or area.",
+          "intent": "FindParking"
+        },
+        {
+          "user": "Near Westgate Mall",
+          "bot": "Perfect! I'm searching for available parking in Westgate Mall. When do you need the space? (e.g., 'tomorrow at 9 AM' or 'Dec 25 from 2 PM')",
+          "intent": "FindParking-Location"
+        },
+        {
+          "user": "Tomorrow at 2 PM",
+          "bot": "Excellent! I found several parking spaces in Westgate Mall starting tomorrow at 2 PM. Would you like to see options sorted by price, rating, or distance?",
+          "intent": "FindParking-DateTime"
+        },
+        {
+          "user": "Show cheapest",
+          "bot": "Here are the most affordable parking options in Westgate Mall:\n\n1. **Secure Covered Parking** - KSH 50/hour ⭐ 4.5\n2. **Westgate Street Parking** - KSH 60/hour ⭐ 4.2\n3. **Premium Garage** - KSH 80/hour ⭐ 4.8\n\nWould you like more details about any of these?",
+          "intent": "FilterParking-Price"
+        },
+        {
+          "user": "Tell me more about the first one",
+          "bot": "📍 **Secure Covered Parking**\n\n⭐ 4.5 (87 reviews)\n💰 KSH 50/hour\n📏 150m from Westgate Mall\n\n**Features:**\n✓ Covered parking\n✓ CCTV surveillance\n✓ 24/7 access\n✓ Security guard\n\n**Description:**\nCovered parking space in a secure compound with 24/7 CCTV and security guard. Very close to Westgate Mall. Perfect for shopping or business meetings.\n\n**Host:** John Kamau\n\nWould you like to book this space?",
+          "intent": "ViewParkingDetails"
+        },
+        {
+          "user": "Yes book it",
+          "bot": "Great! Let me confirm your booking:\n\n📍 **Secure Covered Parking**\n📅 Start: Tomorrow 2:00 PM\n📅 End: Tomorrow 6:00 PM\n⏱️ Duration: 4 hours\n💰 Total: KSH 200\n\nIs this correct?",
+          "intent": "BookParking-Confirm"
+        },
+        {
+          "user": "Yes confirm",
+          "bot": "Perfect! Processing your payment of KSH 200 via M-Pesa. Please enter your M-Pesa phone number (format: 254XXXXXXXXX):",
+          "intent": "BookParking-Payment"
+        },
+        {
+          "user": "254712345678",
+          "bot": "Processing M-Pesa STK Push to 254712345678 for KSH 200. Please check your phone and enter your M-Pesa PIN to complete the payment. 📱",
+          "intent": "Payment-PhoneNumber"
+        },
+        {
+          "user": "[User completes M-Pesa on phone]",
+          "bot": "✅ Payment successful! Your booking is confirmed.\n\n**Booking Reference:** BK12345\n**Receipt Number:** QF12345678\n\n📍 Secure Covered Parking\n📅 Tomorrow 2:00 PM to 6:00 PM\n💰 KSH 200\n\nYou can view your booking details at any time by asking 'show my bookings'. Enjoy your parking! 🚗",
+          "intent": "Payment-Success"
+        }
+      ]
+    },
+    {
+      "title": "Host Adding a New Parking Space",
+      "scenario": "A property owner lists their parking space on ParkShare",
+      "conversation": [
+        {
+          "user": "I want to rent out my parking space",
+          "bot": "That's great! You can earn money by renting out your parking space. 💰\n\nTo get started:\n1. Sign up as a Host (if you haven't already)\n2. Add your parking space details\n3. Set your pricing\n4. Start accepting bookings!\n\nWould you like me to guide you through adding your first parking space?",
+          "intent": "BecomeHost"
+        },
+        {
+          "user": "Yes please",
+          "bot": "Perfect! Let's add your parking space. First, what's the address of your parking space?",
+          "intent": "AddSpace-Start"
+        },
+        {
+          "user": "Valley Road, Kilimani, Nairobi",
+          "bot": "Got it! Address: Valley Road, Kilimani, Nairobi\n\nNow, what type of parking space is it?\n1. Driveway\n2. Garage\n3. Parking Lot\n4. Street Parking",
+          "intent": "AddSpace-Location"
+        },
+        {
+          "user": "It's a garage",
+          "bot": "Excellent! Garage it is.\n\nHow much do you want to charge per hour? (in KSH)",
+          "intent": "AddSpace-Type"
+        },
+        {
+          "user": "100 shillings per hour",
+          "bot": "Great! KSH 100 per hour.\n\nDo you also want to set a daily rate? (Optional - just say 'no' to skip)",
+          "intent": "AddSpace-Pricing"
+        },
+        {
+          "user": "Yes, 600 per day",
+          "bot": "Noted! Now, what features does your parking space have? (e.g., Covered, Security, EV Charging, CCTV, 24/7 Access)\n\nList them separated by commas:",
+          "intent": "AddSpace-DailyRate"
+        },
+        {
+          "user": "Covered, CCTV, Security guard, Automated gate",
+          "bot": "Excellent! Features added: Covered, CCTV, Security guard, Automated gate\n\nNow, give your parking space a catchy title (e.g., 'Secure Covered Parking Near Mall')",
+          "intent": "AddSpace-Features"
+        },
+        {
+          "user": "Premium Secure Garage in Kilimani",
+          "bot": "Perfect! And finally, write a brief description of your parking space to attract drivers:",
+          "intent": "AddSpace-Title"
+        },
+        {
+          "user": "Spacious covered garage in the heart of Kilimani. Features automated gate access, 24/7 CCTV surveillance, and security guard on site. Perfect for daily commuters or long-term parking. Walking distance to restaurants and shops.",
+          "bot": "Perfect! Here's your parking space listing:\n\n📍 **Premium Secure Garage in Kilimani**\n📍 Location: Valley Road, Kilimani, Nairobi\n🚗 Type: Garage\n💰 KSH 100/hour (KSH 600/day)\n✨ Features: Covered, CCTV, Security guard, Automated gate\n\nSpacious covered garage in the heart of Kilimani. Features automated gate access, 24/7 CCTV surveillance, and security guard on site. Perfect for daily commuters or long-term parking. Walking distance to restaurants and shops.\n\nReady to publish this listing?",
+          "intent": "AddSpace-Description"
+        },
+        {
+          "user": "Yes publish",
+          "bot": "🎉 Congratulations! Your parking space has been listed successfully!\n\n**Listing ID:** PS67890\n\nYou can now start receiving bookings. Manage your space from the Host Dashboard. Good luck! 💰",
+          "intent": "AddSpace-Confirm"
+        }
+      ]
+    },
+    {
+      "title": "Driver Viewing and Canceling Booking",
+      "scenario": "A driver checks their bookings and cancels one",
+      "conversation": [
+        {
+          "user": "Show my bookings",
+          "bot": "Here are your bookings:\n\n**Active Bookings:**\n1. BK12345 - Secure Covered Parking (Today 2:00-6:00 PM)\n\n**Upcoming:**\n2. BK12346 - Westlands Parking Lot (Tomorrow 9:00 AM-5:00 PM)\n3. BK12347 - CBD Street Parking (Dec 25 10:00 AM-2:00 PM)\n\nType a booking ID to see details or cancel.",
+          "intent": "ViewBookings"
+        },
+        {
+          "user": "Cancel booking BK12347",
+          "bot": "Are you sure you want to cancel booking BK12347?\n\n📍 CBD Street Parking\n📅 Dec 25, 10:00 AM to 2:00 PM\n💰 Paid: KSH 240\n\nYou may be eligible for a refund depending on the cancellation policy. Confirm cancellation?",
+          "intent": "CancelBooking"
+        },
+        {
+          "user": "Yes I'm sure",
+          "bot": "✅ Booking BK12347 has been cancelled. Refund of KSH 240 will be processed within 3-5 business days.",
+          "intent": "CancelBooking-Confirm"
+        }
+      ]
+    },
+    {
+      "title": "Driver Leaving a Review",
+      "scenario": "A driver reviews a completed parking booking",
+      "conversation": [
+        {
+          "user": "I want to leave a review",
+          "bot": "Great! Reviews help other drivers. Which booking would you like to review?\n\nYour recent completed bookings:\n1. BK12340 - Secure Covered Parking (Dec 15)\n2. BK12338 - Westlands Parking (Dec 10)\n3. BK12335 - Karen Driveway (Dec 5)",
+          "intent": "ReviewSpace"
+        },
+        {
+          "user": "The first one",
+          "bot": "Perfect! You're reviewing:\n📍 Secure Covered Parking\n📅 Dec 15, 2025\n\nHow would you rate this parking space? (1-5 stars)",
+          "intent": "ReviewSpace-SelectBooking"
+        },
+        {
+          "user": "5 stars",
+          "bot": "Thanks! 5 stars ⭐\n\nNow, would you like to add a written review? Share your experience with other drivers:",
+          "intent": "ReviewSpace-Rating"
+        },
+        {
+          "user": "Excellent parking space! Very secure with great location. The host was friendly and responsive. Highly recommend!",
+          "bot": "✅ Review submitted! Thank you for your feedback.\n\n⭐ 5 stars\n💬 \"Excellent parking space! Very secure with great location. The host was friendly and responsive. Highly recommend!\"\n\nYour review helps the ParkShare community!",
+          "intent": "ReviewSpace-Comment"
+        }
+      ]
+    },
+    {
+      "title": "Host Checking Earnings",
+      "scenario": "A host views their earnings dashboard",
+      "conversation": [
+        {
+          "user": "Show my earnings",
+          "bot": "Here's your earnings summary:\n\n💰 **Total Earnings:** KSH 45,600\n📅 **This Month:** KSH 8,400\n📊 **Completed Bookings:** 38\n⏳ **Pending Payouts:** KSH 2,100\n\nWould you like to see a detailed breakdown?",
+          "intent": "ViewEarnings"
+        },
+        {
+          "user": "When is my next payout?",
+          "bot": "Your ParkShare Earnings:\n\nAll Time: KSH 45,600\nThis Month: KSH 8,400\nLast Payout: KSH 6,500 on Dec 15, 2025\n\nNext payout scheduled for: Dec 31, 2025",
+          "intent": "ViewEarnings"
+        }
+      ]
+    },
+    {
+      "title": "Support - Payment Issue",
+      "scenario": "User has a payment problem and needs help",
+      "conversation": [
+        {
+          "user": "I need help with a payment",
+          "bot": "I understand you're having a payment issue. Let me help you with that.\n\nPlease provide:\n1. Your booking ID or transaction reference\n2. Brief description of the issue\n\nOur payment team will investigate and respond within 24 hours.",
+          "intent": "Support-Payment"
+        },
+        {
+          "user": "Booking BK12345 - payment was deducted but booking not confirmed",
+          "bot": "I'm sorry to hear that. I've recorded your issue:\n\nBooking ID: BK12345\nIssue: Payment deducted but booking not confirmed\n\nLet me escalate this to our payment team immediately. Would you like to speak with a human agent?",
+          "intent": "Support-Payment"
+        },
+        {
+          "user": "Yes please",
+          "bot": "Absolutely! I'm creating a support ticket for you.\n\n**Ticket ID:** TKT98765\n\nOur team will reach out to you shortly via:\n- Email: user@email.com\n- Phone: 254712345678\n\nExpected response time: 1-2 hours",
+          "intent": "Support-Escalate"
+        }
+      ]
+    },
+    {
+      "title": "FAQ - How ParkShare Works",
+      "scenario": "New user learning about the platform",
+      "conversation": [
+        {
+          "user": "How does ParkShare work?",
+          "bot": "ParkShare connects drivers looking for parking with hosts who have spaces to rent! 🚗\n\n**For Drivers:**\n1. Search for parking in your desired location\n2. Book and pay securely via M-Pesa\n3. Park with confidence!\n\n**For Hosts:**\n1. List your parking space\n2. Set your own prices\n3. Earn passive income!\n\nWhat would you like to do?",
+          "intent": "FAQ-HowItWorks"
+        },
+        {
+          "user": "How much does it cost?",
+          "bot": "ParkShare Pricing:\n\n**For Drivers:**\n- No signup fees\n- Pay only for parking you book\n- Prices set by individual hosts\n- Small service fee (10%) added to bookings\n\n**For Hosts:**\n- Free to list your space\n- 15% commission on bookings\n- You keep 85% of earnings\n- No hidden fees\n\nStart parking or hosting today!",
+          "intent": "FAQ-Pricing"
+        },
+        {
+          "user": "Is it safe?",
+          "bot": "Your safety is our top priority! 🔒\n\n✅ All hosts are verified\n✅ Secure M-Pesa payments\n✅ Insurance coverage available\n✅ 24/7 customer support\n✅ Driver and host ratings/reviews\n✅ Secure messaging system\n\nEvery parking space is rated by real users. Always check reviews before booking!",
+          "intent": "FAQ-Safety"
+        }
+      ]
+    },
+    {
+      "title": "Role Switching",
+      "scenario": "User wants to switch from driver to host role",
+      "conversation": [
+        {
+          "user": "I want to become a host too",
+          "bot": "You can be both a driver and a host! 🎭\n\nWhat would you like to do?\n1. Switch to Driver mode\n2. Switch to Host mode\n3. Enable both roles\n\nChoose an option:",
+          "intent": "SwitchRole"
+        },
+        {
+          "user": "Enable both roles",
+          "bot": "Perfect! Both roles are now active on your account.\n\n🚗 Driver Dashboard - Find and book parking\n🏠 Host Dashboard - Manage your spaces and earnings\n\nYou can switch between dashboards anytime. Which one would you like to access now?",
+          "intent": "SwitchRole"
+        }
+      ]
+    },
+    {
+      "title": "Quick Search with Filters",
+      "scenario": "Driver searches with specific requirements",
+      "conversation": [
+        {
+          "user": "Find parking near JKIA tomorrow morning",
+          "bot": "Looking for parking spaces near JKIA. What time do you need the parking for tomorrow?",
+          "intent": "FindParking-Location"
+        },
+        {
+          "user": "From 6 AM for 3 hours",
+          "bot": "Excellent! I found several parking spaces near JKIA starting tomorrow at 6 AM for 3 hours. Would you like to see options sorted by price, rating, or distance?",
+          "intent": "FindParking-DateTime"
+        },
+        {
+          "user": "Nearest ones",
+          "bot": "Here are the closest parking spaces to JKIA:\n\n1. **Airport View Parking** - 200m away - KSH 80/hour\n2. **JKIA Secure Lot** - 400m away - KSH 70/hour\n3. **Terminal Parking** - 500m away - KSH 100/hour\n\nWant to book one?",
+          "intent": "FilterParking-Distance"
+        }
+      ]
+    },
+    {
+      "title": "Managing Multiple Spaces (Host)",
+      "scenario": "Host with multiple listings checks their spaces",
+      "conversation": [
+        {
+          "user": "Show my parking spaces",
+          "bot": "Here are your parking spaces:\n\n1. **Premium Garage Kilimani** - KSH 100/hr - 5 active bookings\n2. **Westlands Driveway** - KSH 80/hr - 2 active bookings\n3. **CBD Street Parking** - KSH 60/hr - 0 active bookings\n\nYou have 3 total listings\n\nWhich one would you like to manage?",
+          "intent": "ManageSpaces"
+        },
+        {
+          "user": "Show details for the first one",
+          "bot": "**Premium Garage Kilimani** (PS67890)\n\n📍 Valley Road, Kilimani\n💰 KSH 100/hour (KSH 600/day)\n⭐ 4.8 rating (23 reviews)\n📊 5 active bookings\n📈 Total earnings: KSH 18,500\n\nWhat would you like to do?\n- View bookings\n- Edit details\n- Change availability\n- View reviews",
+          "intent": "ManageSpaces"
+        }
+      ]
+    },
+    {
+      "title": "Account Information",
+      "scenario": "User checks and updates account details",
+      "conversation": [
+        {
+          "user": "My account details",
+          "bot": "Your ParkShare Account:\n\n👤 Name: Jane Wanjiku\n📧 Email: jane@email.com\n📱 Phone: 254712345678\n🎭 Role: Driver & Host\n\nWhat would you like to update?\n- Email\n- Phone\n- Password\n- Role (switch to Driver/Host)",
+          "intent": "AccountInfo"
+        },
+        {
+          "user": "Thanks, that's all",
+          "bot": "You're welcome! Happy parking with ParkShare! 🚗 Feel free to ask me anything anytime.",
+          "intent": "Goodbye"
+        }
+      ]
+    }
+  ]
+}
+
+
+

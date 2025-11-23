@@ -5,13 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import type { ParkingSpace } from "@/lib/types/parking"
-import { MapPin, DollarSign, Edit, Trash2, Eye, Image as ImageIcon, Clock } from "lucide-react"
+import { MapPin, DollarSign, Edit, Trash2, Eye, Image as ImageIcon, Clock, Star, ParkingSquare } from "lucide-react"
 import Image from "next/image"
 
 interface SpaceCardProps {
   space: ParkingSpace
   onEdit: (space: ParkingSpace) => void
-  onDelete: (spaceId: string) => void
+  onDelete: (space: ParkingSpace) => void
   onView: (space: ParkingSpace) => void
 }
 
@@ -19,15 +19,20 @@ export function SpaceCard({ space, onEdit, onDelete, onView }: SpaceCardProps) {
   const getAvailabilityColor = (availability: string) => {
     switch (availability) {
       case "available":
-        return "bg-success text-success-foreground border-success/50"
+        return "bg-green-500 text-white border-green-400"
       case "occupied":
-        return "bg-destructive text-destructive-foreground border-destructive/50"
+        return "bg-red-500 text-white border-red-400"
       case "reserved":
-        return "bg-accent text-accent-foreground border-accent/50"
+        return "bg-orange-500 text-white border-orange-400"
       default:
-        return "bg-muted text-muted-foreground border-muted/50"
+        return "bg-gray-500 text-white border-gray-400"
     }
   }
+  
+  // Calculate available spots
+  const availableSpots = space.spots?.filter(spot => spot.isAvailable).length || 0
+  const totalSpots = space.totalSpots || space.spots?.length || 1
+  const allBooked = availableSpots === 0
 
   return (
     <Card className="hover:shadow-md transition-all overflow-hidden group">
@@ -137,7 +142,7 @@ export function SpaceCard({ space, onEdit, onDelete, onView }: SpaceCardProps) {
             className="text-destructive hover:text-destructive hover:bg-destructive/10 p-2"
             onClick={(e) => {
               e.stopPropagation()
-              onDelete(space.id)
+              onDelete(space)
             }}
           >
             <Trash2 className="w-4 h-4" />
@@ -145,12 +150,36 @@ export function SpaceCard({ space, onEdit, onDelete, onView }: SpaceCardProps) {
         </div>
 
         {/* Stats row */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-          <span>{space.numberOfSpaces} space{space.numberOfSpaces > 1 ? 's' : ''}</span>
-          <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            Listed {space.createdAt ? new Date(space.createdAt).toLocaleDateString() : 'recently'}
-          </span>
+        <div className="pt-3 border-t space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <ParkingSquare className="w-3 h-3" />
+              <span>
+                <span className={`font-semibold ${allBooked ? 'text-destructive' : 'text-success'}`}>
+                  {availableSpots}
+                </span> / {totalSpots} spots available
+              </span>
+            </div>
+            {space.rating > 0 && (
+              <div className="flex items-center gap-1">
+                <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                <span className="font-medium">{space.rating.toFixed(1)}</span>
+                <span className="text-muted-foreground">({space.reviewCount})</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              Listed {space.createdAt ? new Date(space.createdAt).toLocaleDateString('en-KE', { month: 'short', day: 'numeric', year: 'numeric' }) : 'recently'}
+            </span>
+            {allBooked && (
+              <Badge variant="destructive" className="text-xs">
+                Fully Booked
+              </Badge>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

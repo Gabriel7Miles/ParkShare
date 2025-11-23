@@ -3,13 +3,21 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Home, Calendar, DollarSign, User, LogOut, MessageSquare, Plus, Menu } from "lucide-react"
+import { Home, Calendar, DollarSign, User, LogOut, MessageSquare, Plus, Menu, Car } from "lucide-react"
 import { signOut } from "@/lib/firebase/auth"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useFirebase } from "@/contexts/firebase-context"
 import { useState } from "react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export function HostDashboardNav() {
   const pathname = usePathname()
@@ -23,6 +31,10 @@ export function HostDashboardNav() {
       await signOut(auth)
       router.push("/")
     }
+  }
+
+  const handleSwitchToDriver = () => {
+    router.push("/")
   }
 
   const navItems = [
@@ -64,14 +76,45 @@ export function HostDashboardNav() {
                 <span className="hidden sm:inline">Add Space</span>
               </Button>
             </Link>
-            <div className="hidden md:block text-right">
-              <p className="text-sm font-medium">{userProfile?.displayName}</p>
-              <p className="text-xs text-muted-foreground">Host</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleSignOut}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <User className="w-4 h-4" />
+                  {userProfile?.displayName || "Account"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div>
+                    <p className="font-medium">{userProfile?.displayName}</p>
+                    <p className="text-xs text-muted-foreground">Host Mode</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.push("/host/profile")}>
+                  <User className="w-4 h-4 mr-2" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/host/bookings")}>
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Bookings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/host/earnings")}>
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Earnings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSwitchToDriver}>
+                  <Car className="w-4 h-4 mr-2" />
+                  Switch to Driver Mode
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Mobile Menu */}
@@ -112,7 +155,18 @@ export function HostDashboardNav() {
                     ))}
                   </div>
 
-                  <div className="pt-4 border-t">
+                  <div className="pt-4 border-t space-y-2">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-3 bg-transparent"
+                      onClick={() => {
+                        setMobileMenuOpen(false)
+                        handleSwitchToDriver()
+                      }}
+                    >
+                      <Car className="w-5 h-5" />
+                      Switch to Driver Mode
+                    </Button>
                     <Button
                       variant="outline"
                       className="w-full justify-start gap-3 bg-transparent"

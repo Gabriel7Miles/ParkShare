@@ -1,0 +1,181 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===== HELPER FUNCTIONS =====
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function hasRole(role) {
+      return isAuthenticated() 
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny([role]);
+    }
+    
+    // ===== USER PROFILES =====
+    match /users/{userId} {
+      // Read: Owner can read their own profile, or anyone can read public profile data
+      allow read: if isAuthenticated();
+      
+      // Create: User can create their own profile with required fields
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.email is string
+        && request.resource.data.displayName is string
+        && request.resource.data.roles is list
+        && request.resource.data.roles.size() > 0
+        && request.resource.data.profileComplete is bool
+        && request.resource.data.createdAt is timestamp;
+      
+      // Update: User can update their own profile
+      // Allow updating optional fields: bio, profilePicture, activeRole, phoneNumber, etc.
+      allow update: if isOwner(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.email is string
+        && request.resource.data.displayName is string
+        && request.resource.data.roles is list
+        && request.resource.data.roles.size() > 0;
+    }
+
+    // ===== PARKING SPACES =====
+    match /parkingSpaces/{spaceId} {
+      // Read: Anyone can read (for public browsing on home page)
+      allow read: if true;
+      
+      // Create: Authenticated users with host role can create spaces
+      // Note: Images can be empty on create (will be added via update immediately after)
+      allow create: if isAuthenticated()
+        && request.resource.data.hostId == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'hostId', 'hostName', 'title', 'description', 'address', 
+          'location', 'pricePerHour', 'availability', 'features', 
+          'images', 'rating', 'reviewCount', 'spaceType', 
+          'vehicleTypes', 'totalSpots', 'spots'
+        ])
+        && request.resource.data.availability in ['available', 'occupied', 'reserved']
+        && request.resource.data.totalSpots is int
+        && request.resource.data.totalSpots > 0
+        && request.resource.data.spots is list
+        && request.resource.data.spots.size() == request.resource.data.totalSpots
+        && request.resource.data.images is list;
+      
+      // Update: Host can update their own spaces, or system can update ratings/spots
+      allow update: if isAuthenticated()
+        && (
+          // Host updating their own space (with optional image validation)
+          (resource.data.hostId == request.auth.uid
+            && (
+              // If updating images, must have 1-5 images
+              !request.resource.data.diff(resource.data).affectedKeys().hasAny(['images'])
+              || (
+                request.resource.data.images.size() >= 1
+                && request.resource.data.images.size() <= 5
+              )
+            )
+          )
+          // OR system updating only ratings/reviewCount (from reviews)
+          || (
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['rating', 'reviewCount', 'updatedAt'])
+            && request.resource.data.hostId == resource.data.hostId
+          )
+          // OR system updating spot availability (from bookings)
+          || (
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['spots', 'availability', 'updatedAt'])
+            && request.resource.data.hostId == resource.data.hostId
+          )
+          // OR system adding images right after creation
+          || (
+            resource.data.hostId == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['images', 'updatedAt'])
+            && request.resource.data.images.size() >= 1
+            && request.resource.data.images.size() <= 5
+          )
+        );
+      
+      // Delete: Only host can delete their own spaces
+      allow delete: if isAuthenticated()
+        && resource.data.hostId == request.auth.uid;
+    }
+
+    // ===== BOOKINGS =====
+    match /bookings/{bookingId} {
+      // Create: Authenticated users can create bookings with required fields
+      allow create: if isAuthenticated()
+        && request.resource.data.driverId == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'spaceId', 'driverId', 'driverName', 'hostId', 
+          'startTime', 'endTime', 'totalPrice', 'status', 
+          'paymentStatus', 'spotLabel', 'carDetails'
+        ])
+        && request.resource.data.carDetails.keys().hasAll([
+          'color', 'numberPlate', 'ownershipType'
+        ])
+        && request.resource.data.carDetails.ownershipType in [
+          'personal', 'hired', 'borrowed', 'company', 'rental'
+        ];
+      
+      // Read: Driver or host can read their bookings
+      allow read: if isAuthenticated()
+        && (resource.data.driverId == request.auth.uid
+            || resource.data.hostId == request.auth.uid);
+      
+      // Update: Driver or host can update booking status
+      allow update: if isAuthenticated()
+        && (resource.data.driverId == request.auth.uid
+            || resource.data.hostId == request.auth.uid);
+      
+      // Delete: Only driver can cancel/delete their booking
+      allow delete: if isAuthenticated()
+        && resource.data.driverId == request.auth.uid;
+    }
+
+    // ===== REVIEWS =====
+    match /reviews/{reviewId} {
+      // Create: Authenticated users can create reviews with all required fields
+      allow create: if isAuthenticated()
+        && request.resource.data.driverId == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'spaceId', 'driverId', 'driverName', 'hostId', 
+          'bookingId', 'rating', 'comment', 'createdAt'
+        ])
+        && request.resource.data.rating >= 1 
+        && request.resource.data.rating <= 5;
+      
+      // Read: Anyone authenticated can read reviews (for public display)
+      allow read: if true;
+      
+      // Update: Driver can update their own review, or anyone can mark helpful/reported
+      allow update: if isAuthenticated()
+        && (
+          resource.data.driverId == request.auth.uid
+          || request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['helpful', 'reported'])
+        );
+      
+      // Delete: Only the review author can delete
+      allow delete: if isAuthenticated()
+        && resource.data.driverId == request.auth.uid;
+    }
+
+    // ===== PAYMENTS =====
+    match /payments/{paymentId} {
+      // Create: System only (from webhook)
+      allow create: if false;
+      
+      // Read: User can read their own payment records
+      allow read: if isAuthenticated()
+        && (resource.data.userId == request.auth.uid
+            || resource.data.hostId == request.auth.uid);
+      
+      // Update/Delete: System only
+      allow update, delete: if false;
+    }
+  }
+}

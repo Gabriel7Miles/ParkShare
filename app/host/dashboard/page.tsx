@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { HostDashboardNav } from "@/components/host/dashboard-nav"
 import { SpaceCard } from "@/components/host/space-card"
+import { ViewSpaceModal, DeleteConfirmationDialog } from "@/components/host/space-modals"
 import { 
   getHostSpaces, 
   deleteParkingSpace 
@@ -22,6 +23,10 @@ export default function HostDashboard() {
   const [spaces, setSpaces] = useState<ParkingSpace[]>([])
   const [loading, setLoading] = useState(true)
   const [statsLoading, setStatsLoading] = useState(true)
+  const [viewModalOpen, setViewModalOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [selectedSpace, setSelectedSpace] = useState<ParkingSpace | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const { user, userProfile, activeRole, loading: authLoading } = useAuth()
   const { db, storage } = useFirebase()
   const router = useRouter()
@@ -48,12 +53,15 @@ export default function HostDashboard() {
         try {
           console.log("[Host Dashboard] Setting up listener for host:", user.uid)
           setStatsLoading(true)
-          unsubscribe = await getHostSpaces(db, user.uid, (newSpaces) => {
+          const unsub = await getHostSpaces(db, user.uid, (newSpaces) => {
             console.log("[Host Dashboard] Received spaces:", newSpaces.length)
             setSpaces(newSpaces)
             setLoading(false)
             setStatsLoading(false)
           })
+          if (unsub) {
+            unsubscribe = unsub
+          }
         } catch (error) {
           console.error("[Host Dashboard] Error setting up listener:", error)
           toast({
@@ -87,10 +95,22 @@ export default function HostDashboard() {
     }
   }, [user, db, storage, hasHostRole, toast])
 
-  const handleDelete = async (spaceId: string) => {
-    if (!confirm("Are you sure you want to delete this space? This will also delete all associated images. This action cannot be undone.")) return
+  const handleView = (space: ParkingSpace) => {
+    setSelectedSpace(space)
+    setViewModalOpen(true)
+  }
 
-    if (!db || !storage) {
+  const handleEdit = (space: ParkingSpace) => {
+    router.push(`/host/edit-space/${space.id}`)
+  }
+
+  const handleDeleteClick = (space: ParkingSpace) => {
+    setSelectedSpace(space)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedSpace || !db || !storage) {
       toast({
         title: "Error",
         description: "Database or storage not available",
@@ -99,16 +119,19 @@ export default function HostDashboard() {
       return
     }
 
+    setIsDeleting(true)
     try {
-      console.log(`[Host Dashboard] Deleting space ${spaceId} with images...`)
-      await deleteParkingSpace(db, storage, spaceId)
-      setSpaces(prev => prev.filter(s => s.id !== spaceId))
+      console.log(`[Host Dashboard] Deleting space ${selectedSpace.id} with images...`)
+      await deleteParkingSpace(db, storage, selectedSpace.id)
+      setSpaces(prev => prev.filter(s => s.id !== selectedSpace.id))
       toast({
         title: "✅ Space Deleted Successfully",
         description: "Your parking space and all images have been removed.",
       })
       
-      window.dispatchEvent(new CustomEvent('space:deleted', { detail: { spaceId } }))
+      setDeleteDialogOpen(false)
+      setSelectedSpace(null)
+      window.dispatchEvent(new CustomEvent('space:deleted', { detail: { spaceId: selectedSpace.id } }))
     } catch (error: any) {
       console.error("[Host Dashboard] Delete error:", error)
       toast({
@@ -116,6 +139,8 @@ export default function HostDashboard() {
         description: error.message || "Failed to delete space and images",
         variant: "destructive",
       })
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -251,13 +276,27 @@ export default function HostDashboard() {
                 <SpaceCard
                   key={space.id}
                   space={space}
-                  onEdit={() => router.push(`/host/edit-space/${space.id}`)}
-                  onDelete={handleDelete}
-                  onView={() => router.push(`/host/space/${space.id}`)}
+                  onEdit={() => handleEdit(space)}
+                  onDelete={() => handleDeleteClick(space)}
+                  onView={() => handleView(space)}
                 />
               ))}
             </div>
           )}
+
+          {/* Modals */}
+          <ViewSpaceModal
+            space={selectedSpace}
+            open={viewModalOpen}
+            onOpenChange={setViewModalOpen}
+          />
+          <DeleteConfirmationDialog
+            space={selectedSpace}
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+            onConfirm={handleDeleteConfirm}
+            isDeleting={isDeleting}
+          />
         </div>
       </div>
     </div>

@@ -1,0 +1,413 @@
+{
+  "additionalTrainingPhrases": {
+    "description": "Extended training phrases to improve intent recognition",
+    "kenyanEnglish": {
+      "description": "Kenyan English variations and colloquialisms",
+      "phrases": [
+        {
+          "intent": "FindParking",
+          "phrases": [
+            "Nataka parking",
+            "Nipatieni parking",
+            "Niko wapi naweza paka gari",
+            "Where can I pack my car",
+            "I need somewhere to pack",
+            "Kuna parking hapa",
+            "Parking iko available",
+            "Parking near me tafadhali"
+          ]
+        },
+        {
+          "intent": "BookParking-Confirm",
+          "phrases": [
+            "Sawa book",
+            "Ni sawa",
+            "Confirm tu",
+            "Proceed",
+            "Sawa kabisa",
+            "Haya basi",
+            "Let me book",
+            "I'll take that one"
+          ]
+        },
+        {
+          "intent": "Payment-PhoneNumber",
+          "phrases": [
+            "My number ni 0712345678",
+            "It's 254712345678",
+            "Use 0712345678",
+            "Pay from 254712345678",
+            "Namba yangu ni 0712345678"
+          ]
+        },
+        {
+          "intent": "CancelBooking",
+          "phrases": [
+            "Cancel booking yangu",
+            "I want to cancel hiyo booking",
+            "Remove my reservation",
+            "Sitaki hiyo booking",
+            "Ondoa booking"
+          ]
+        },
+        {
+          "intent": "ViewEarnings",
+          "phrases": [
+            "Nimepata pesa ngapi",
+            "Show me my earnings",
+            "How much have I made",
+            "Nipe statement",
+            "Check my money",
+            "Pesa yangu ni ngapi"
+          ]
+        },
+        {
+          "intent": "Support",
+          "phrases": [
+            "Nina shida",
+            "Kuna problem",
+            "Something is not working",
+            "I need msaada",
+            "Help please",
+            "Nisaidie"
+          ]
+        }
+      ]
+    },
+    "voiceCommands": {
+      "description": "Voice-friendly phrases for Google Assistant integration",
+      "phrases": [
+        {
+          "intent": "FindParking",
+          "phrases": [
+            "Find me parking",
+            "Where's the nearest parking",
+            "I'm looking for a place to park",
+            "Search for parking nearby",
+            "Show parking options"
+          ]
+        },
+        {
+          "intent": "ViewBookings",
+          "phrases": [
+            "What are my bookings",
+            "List my reservations",
+            "Tell me about my parking",
+            "Show me what I've booked"
+          ]
+        },
+        {
+          "intent": "ViewEarnings",
+          "phrases": [
+            "How much money have I earned",
+            "What's my total income",
+            "Tell me my earnings",
+            "Show my revenue"
+          ]
+        }
+      ]
+    },
+    "casualConversational": {
+      "description": "More casual, conversational phrases",
+      "phrases": [
+        {
+          "intent": "Welcome",
+          "phrases": [
+            "Yo",
+            "Sup",
+            "What's good",
+            "Uko?",
+            "Mambo",
+            "Sasa",
+            "Niaje"
+          ]
+        },
+        {
+          "intent": "FindParking",
+          "phrases": [
+            "Dude I need parking ASAP",
+            "Bro where can I park",
+            "I'm desperate for parking",
+            "Hook me up with parking",
+            "Got any parking spots?"
+          ]
+        },
+        {
+          "intent": "BookParking-Confirm",
+          "phrases": [
+            "Yeah let's do it",
+            "Sure thing",
+            "Sounds good",
+            "Perfect let's book",
+            "I'm in"
+          ]
+        },
+        {
+          "intent": "Goodbye",
+          "phrases": [
+            "Cheers",
+            "Later",
+            "Peace",
+            "Bye bye",
+            "Catch you later",
+            "Asante sana",
+            "Sawa bye"
+          ]
+        }
+      ]
+    },
+    "specificScenarios": {
+      "description": "Scenario-specific phrases",
+      "phrases": [
+        {
+          "intent": "FindParking",
+          "scenario": "Airport parking",
+          "phrases": [
+            "Parking at JKIA",
+            "I'm flying tomorrow need parking",
+            "Long term parking near airport",
+            "Secure parking for my trip",
+            "Going to airport tomorrow"
+          ]
+        },
+        {
+          "intent": "FindParking",
+          "scenario": "Event parking",
+          "phrases": [
+            "Parking for concert tonight",
+            "There's a match at Kasarani, need parking",
+            "Going to a wedding need parking",
+            "Event parking near stadium"
+          ]
+        },
+        {
+          "intent": "FindParking",
+          "scenario": "Shopping",
+          "phrases": [
+            "Parking at the mall",
+            "Going shopping need parking",
+            "Parking near supermarket",
+            "I'm at the mall where can I park"
+          ]
+        },
+        {
+          "intent": "FindParking",
+          "scenario": "Work/Daily commute",
+          "phrases": [
+            "Daily parking near my office",
+            "Monthly parking downtown",
+            "Parking for work",
+            "I need parking Monday to Friday"
+          ]
+        },
+        {
+          "intent": "AddSpace-Start",
+          "scenario": "Host motivations",
+          "phrases": [
+            "I have empty space want to rent it",
+            "My driveway is free during day",
+            "I want to make money from my garage",
+            "Can I rent out my parking spot",
+            "How do I list my space"
+          ]
+        }
+      ]
+    },
+    "errors": {
+      "description": "Common user errors and corrections",
+      "phrases": [
+        {
+          "intent": "FindParking-Location",
+          "userError": "Typing mistakes",
+          "phrases": [
+            "Westlnads",
+            "Kilimani Nirobi",
+            "Near Wesgate",
+            "JKIA airpot"
+          ]
+        },
+        {
+          "intent": "Payment-PhoneNumber",
+          "userError": "Wrong format",
+          "phrases": [
+            "0712345678",
+            "+254 712 345 678",
+            "712345678",
+            "254 712345678"
+          ],
+          "note": "System should normalize to 254712345678"
+        }
+      ]
+    }
+  },
+  "contextualFollowUps": {
+    "description": "Follow-up phrases based on context",
+    "scenarios": [
+      {
+        "context": "search-results",
+        "followUps": [
+          "Show me more",
+          "Any cheaper options?",
+          "What about something closer?",
+          "Do you have covered parking?",
+          "I need one with security",
+          "Show me the first one",
+          "Tell me about number 2",
+          "What's the cheapest?"
+        ]
+      },
+      {
+        "context": "viewing-details",
+        "followUps": [
+          "How do I get there?",
+          "Is it safe?",
+          "What do reviews say?",
+          "Can I see photos?",
+          "Is the host reliable?",
+          "Book it",
+          "Show me another one",
+          "Too expensive, next"
+        ]
+      },
+      {
+        "context": "booking-confirmation",
+        "followUps": [
+          "Change the time",
+          "Make it longer",
+          "Actually I need it earlier",
+          "Looks good",
+          "Proceed",
+          "Cancel this",
+          "Go back"
+        ]
+      },
+      {
+        "context": "payment-processing",
+        "followUps": [
+          "I didn't get the prompt",
+          "Can I use different number?",
+          "Payment failed",
+          "I entered wrong PIN",
+          "How long does it take?",
+          "Is it done?"
+        ]
+      },
+      {
+        "context": "adding-space-*",
+        "followUps": [
+          "Start over",
+          "Go back",
+          "Change previous answer",
+          "Skip this",
+          "Is this required?",
+          "Can I edit later?"
+        ]
+      }
+    ]
+  },
+  "synonymsExpansion": {
+    "description": "Additional synonyms for better recognition",
+    "terms": {
+      "parking": ["packing", "park", "parking space", "spot", "bay", "stall"],
+      "booking": ["reservation", "booking", "reserve", "book"],
+      "cancel": ["remove", "delete", "cancel", "abort", "stop"],
+      "price": ["cost", "rate", "fee", "charge", "amount"],
+      "cheap": ["affordable", "budget", "low cost", "inexpensive", "economical"],
+      "expensive": ["costly", "pricey", "high cost", "premium"],
+      "near": ["close to", "around", "nearby", "next to", "beside"],
+      "available": ["free", "open", "vacant", "unoccupied"],
+      "secure": ["safe", "protected", "guarded", "secure"],
+      "covered": ["roofed", "sheltered", "indoor", "undercover"]
+    }
+  },
+  "compositeIntents": {
+    "description": "Complex multi-intent queries",
+    "examples": [
+      {
+        "userQuery": "Find me cheap parking near Westgate tomorrow and book it",
+        "breakdown": [
+          "FindParking-Location (Westgate)",
+          "FindParking-DateTime (tomorrow)",
+          "FilterParking-Price (cheap)",
+          "BookParking-Confirm (book it)"
+        ],
+        "handling": "Process sequentially, ask for clarification on time if needed"
+      },
+      {
+        "userQuery": "Cancel my booking and find me new parking in CBD",
+        "breakdown": [
+          "CancelBooking (requires booking ID)",
+          "FindParking-Location (CBD)"
+        ],
+        "handling": "Ask for booking ID first, then proceed with new search"
+      },
+      {
+        "userQuery": "How much have I earned this month and when is my next payout",
+        "breakdown": [
+          "ViewEarnings (this month)",
+          "ViewEarnings (next payout)"
+        ],
+        "handling": "Combine in single response"
+      }
+    ]
+  },
+  "negativeExamples": {
+    "description": "Examples that should NOT match certain intents",
+    "examples": [
+      {
+        "phrase": "I'm going to park my car",
+        "shouldNotMatch": "FindParking",
+        "reason": "User is stating action, not requesting service",
+        "correctIntent": "None (informational)"
+      },
+      {
+        "phrase": "The parking is full",
+        "shouldNotMatch": "FindParking",
+        "reason": "User is providing information, not searching",
+        "correctIntent": "Support or None"
+      },
+      {
+        "phrase": "I booked parking",
+        "shouldNotMatch": "BookParking",
+        "reason": "Past tense, already completed",
+        "correctIntent": "ViewBookings or None"
+      }
+    ]
+  },
+  "slotFilling": {
+    "description": "Examples for slot filling and parameter extraction",
+    "scenarios": [
+      {
+        "intent": "FindParking-DateTime",
+        "completePhrase": "I need parking at Westgate tomorrow from 2pm to 5pm",
+        "extractedSlots": {
+          "location": "Westgate",
+          "date": "tomorrow",
+          "startTime": "2pm",
+          "endTime": "5pm",
+          "duration": "3 hours"
+        }
+      },
+      {
+        "intent": "AddSpace-Pricing",
+        "completePhrase": "100 shillings per hour, 600 per day, 15000 per month",
+        "extractedSlots": {
+          "hourlyRate": 100,
+          "dailyRate": 600,
+          "monthlyRate": 15000
+        }
+      },
+      {
+        "intent": "FilterParking-Price",
+        "completePhrase": "Show me parking under 80 shillings",
+        "extractedSlots": {
+          "maxPrice": 80,
+          "currency": "KSH"
+        }
+      }
+    ]
+  }
+}
+
+
+

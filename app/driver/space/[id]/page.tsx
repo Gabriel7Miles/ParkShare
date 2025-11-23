@@ -11,7 +11,7 @@ import { getParkingSpaceById } from "@/lib/firebase/parking"
 import { getSpaceReviews, getReviewStats, createReview } from "@/lib/firebase/reviews"
 import type { ParkingSpace } from "@/lib/types/parking"
 import type { Review, ReviewStats } from "@/lib/types/review"
-import { MapPin, DollarSign, Star, Loader2, ArrowLeft, Send } from "lucide-react"
+import { MapPin, DollarSign, Star, Loader2, ArrowLeft, Send, Navigation } from "lucide-react"
 import { ReviewList } from "@/components/reviews/review-list"
 import { ReviewStatsCard } from "@/components/reviews/review-stats"
 import Link from "next/link"
@@ -72,12 +72,7 @@ export default function SpaceDetailsPage() {
         setReviews(reviewsData)
         setStats(statsData)
       } catch (reviewError) {
-        console.warn("[Space Details] Failed to load reviews or stats:", reviewError)
-        toast({
-          title: "Warning",
-          description: "Unable to load reviews or stats due to permissions. Space details are still available.",
-          variant: "warning",
-        })
+        console.warn("[Space Details] Unable to load reviews or stats:", reviewError)
       }
     } catch (error) {
       console.error("[Space Details] Error loading space details:", error)
@@ -120,6 +115,8 @@ export default function SpaceDetailsPage() {
         spaceId: params.id as string,
         driverId: user.uid,
         driverName: userProfile.displayName || "Anonymous",
+        hostId: space?.hostId || "",
+        bookingId: "",
         rating,
         comment,
       })
@@ -205,10 +202,17 @@ export default function SpaceDetailsPage() {
                 <div className="flex items-start justify-between mb-4 flex-wrap gap-4">
                   <div className="flex-1">
                     <h1 className="text-3xl font-bold mb-2 font-sans">{space.title}</h1>
-                    <div className="flex items-center gap-2 text-muted-foreground mb-4">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-2">
                       <MapPin className="w-4 h-4" />
                       {space.address}
                     </div>
+                    {space.hostId && (
+                      <Link href={`/host/profile/${space.hostId}`}>
+                        <Button variant="link" className="px-0 h-auto text-sm text-primary hover:underline">
+                          View host profile →
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                   <Badge className="bg-success">Available</Badge>
                 </div>
@@ -220,7 +224,7 @@ export default function SpaceDetailsPage() {
                     <span className="text-sm text-muted-foreground">({space.reviewCount || 0} reviews)</span>
                   </div>
                   <Badge variant="outline">{space.spaceType}</Badge>
-                  {space.numberOfSpaces && <Badge variant="secondary">{space.numberOfSpaces} spaces available</Badge>}
+                  {space.totalSpots && <Badge variant="secondary">{space.totalSpots} spaces available</Badge>}
                 </div>
 
                 <p className="text-muted-foreground mb-6 leading-relaxed">{space.description}</p>
@@ -244,9 +248,23 @@ export default function SpaceDetailsPage() {
                       <p className="text-sm text-muted-foreground">KES {space.pricePerMonth}/month</p>
                     )}
                   </div>
-                  <Button size="lg" className="bg-success hover:bg-success/90">
-                    Book Now
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => {
+                        const url = `https://www.google.com/maps/dir/?api=1&destination=${space.location.lat},${space.location.lng}`
+                        window.open(url, "_blank")
+                      }}
+                    >
+                      <Navigation className="w-4 h-4" />
+                      Get Directions
+                    </Button>
+                    <Button size="lg" className="bg-success hover:bg-success/90">
+                      Book Now
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -255,7 +273,7 @@ export default function SpaceDetailsPage() {
             {stats && <ReviewStatsCard stats={stats} />}
 
             {/* Add Review */}
-            {user && userProfile?.role === "driver" && (
+            {user && userProfile?.roles?.includes("driver") && (
               <Card>
                 <CardHeader>
                   <CardTitle>Leave a Review</CardTitle>

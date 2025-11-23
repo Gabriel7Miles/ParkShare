@@ -1,0 +1,266 @@
+{
+  "contexts": [
+    {
+      "name": "welcome",
+      "lifespanCount": 2,
+      "description": "User has just started conversation"
+    },
+    {
+      "name": "awaiting-location",
+      "lifespanCount": 3,
+      "description": "System is waiting for user to provide parking location",
+      "parameters": []
+    },
+    {
+      "name": "has-location",
+      "lifespanCount": 5,
+      "description": "User has provided a location for parking search",
+      "parameters": ["location", "address"]
+    },
+    {
+      "name": "search-results",
+      "lifespanCount": 5,
+      "description": "Search results are available and displayed",
+      "parameters": ["location", "start-time", "end-time", "duration", "results-count"]
+    },
+    {
+      "name": "viewing-results",
+      "lifespanCount": 5,
+      "description": "User is browsing through search results",
+      "parameters": ["results-list", "sort-preference"]
+    },
+    {
+      "name": "viewing-details",
+      "lifespanCount": 5,
+      "description": "User is viewing details of a specific parking space",
+      "parameters": ["space-id", "space-title", "space-price", "space-rating", "host-name"]
+    },
+    {
+      "name": "booking-confirmation",
+      "lifespanCount": 3,
+      "description": "User is confirming booking details before payment",
+      "parameters": [
+        "space-id",
+        "start-time",
+        "end-time",
+        "duration",
+        "total-price"
+      ]
+    },
+    {
+      "name": "awaiting-payment",
+      "lifespanCount": 3,
+      "description": "System is waiting for payment information",
+      "parameters": ["booking-id", "total-price"]
+    },
+    {
+      "name": "payment-processing",
+      "lifespanCount": 5,
+      "description": "Payment is being processed",
+      "parameters": [
+        "booking-id",
+        "phone-number",
+        "checkout-request-id",
+        "merchant-request-id"
+      ]
+    },
+    {
+      "name": "payment-failed",
+      "lifespanCount": 2,
+      "description": "Payment attempt failed",
+      "parameters": ["booking-id", "error-message"]
+    },
+    {
+      "name": "viewing-bookings",
+      "lifespanCount": 5,
+      "description": "User is viewing their bookings",
+      "parameters": ["active-bookings", "upcoming-bookings", "completed-bookings"]
+    },
+    {
+      "name": "canceling-booking",
+      "lifespanCount": 2,
+      "description": "User is canceling a booking",
+      "parameters": ["booking-id", "refund-amount"]
+    },
+    {
+      "name": "becoming-host",
+      "lifespanCount": 3,
+      "description": "User is learning about or starting to become a host"
+    },
+    {
+      "name": "adding-space-location",
+      "lifespanCount": 10,
+      "description": "Host is adding parking space - location step",
+      "parameters": []
+    },
+    {
+      "name": "adding-space-type",
+      "lifespanCount": 10,
+      "description": "Host is adding parking space - type step",
+      "parameters": ["address", "location"]
+    },
+    {
+      "name": "adding-space-pricing",
+      "lifespanCount": 10,
+      "description": "Host is adding parking space - pricing step",
+      "parameters": ["address", "location", "space-type"]
+    },
+    {
+      "name": "adding-space-daily-rate",
+      "lifespanCount": 10,
+      "description": "Host is adding parking space - daily rate step",
+      "parameters": ["address", "location", "space-type", "hourly-rate"]
+    },
+    {
+      "name": "adding-space-features",
+      "lifespanCount": 10,
+      "description": "Host is adding parking space - features step",
+      "parameters": [
+        "address",
+        "location",
+        "space-type",
+        "hourly-rate",
+        "daily-rate"
+      ]
+    },
+    {
+      "name": "adding-space-title",
+      "lifespanCount": 10,
+      "description": "Host is adding parking space - title step",
+      "parameters": [
+        "address",
+        "location",
+        "space-type",
+        "hourly-rate",
+        "daily-rate",
+        "features"
+      ]
+    },
+    {
+      "name": "adding-space-description",
+      "lifespanCount": 10,
+      "description": "Host is adding parking space - description step",
+      "parameters": [
+        "address",
+        "location",
+        "space-type",
+        "hourly-rate",
+        "daily-rate",
+        "features",
+        "title"
+      ]
+    },
+    {
+      "name": "confirming-space",
+      "lifespanCount": 3,
+      "description": "Host is confirming new parking space before publishing",
+      "parameters": [
+        "address",
+        "location",
+        "space-type",
+        "hourly-rate",
+        "daily-rate",
+        "features",
+        "title",
+        "description"
+      ]
+    },
+    {
+      "name": "viewing-earnings",
+      "lifespanCount": 5,
+      "description": "Host is viewing earnings information",
+      "parameters": [
+        "total-earnings",
+        "monthly-earnings",
+        "pending-payouts"
+      ]
+    },
+    {
+      "name": "managing-spaces",
+      "lifespanCount": 5,
+      "description": "Host is managing their parking spaces",
+      "parameters": ["spaces-list", "spaces-count"]
+    },
+    {
+      "name": "writing-review",
+      "lifespanCount": 5,
+      "description": "User is writing a review",
+      "parameters": ["recent-bookings"]
+    },
+    {
+      "name": "review-rating",
+      "lifespanCount": 5,
+      "description": "User is providing rating for review",
+      "parameters": ["booking-id", "space-title"]
+    },
+    {
+      "name": "review-comment",
+      "lifespanCount": 5,
+      "description": "User is adding comment to review",
+      "parameters": ["booking-id", "space-title", "rating"]
+    },
+    {
+      "name": "support-mode",
+      "lifespanCount": 5,
+      "description": "User is in support mode seeking help",
+      "parameters": []
+    },
+    {
+      "name": "support-payment",
+      "lifespanCount": 5,
+      "description": "User has payment support issue",
+      "parameters": ["issue-description"]
+    },
+    {
+      "name": "account-info",
+      "lifespanCount": 3,
+      "description": "User is viewing/managing account information",
+      "parameters": ["user-name", "user-email", "user-phone", "user-role"]
+    },
+    {
+      "name": "switching-role",
+      "lifespanCount": 2,
+      "description": "User is switching between driver and host roles",
+      "parameters": ["current-role"]
+    }
+  ],
+  "contextManagement": {
+    "description": "Context management rules and best practices",
+    "rules": [
+      {
+        "rule": "Clear payment contexts after successful payment",
+        "contexts": ["awaiting-payment", "payment-processing"],
+        "action": "clear",
+        "trigger": "payment-success"
+      },
+      {
+        "rule": "Reset search contexts when new search starts",
+        "contexts": ["search-results", "viewing-results", "viewing-details"],
+        "action": "clear",
+        "trigger": "new-search"
+      },
+      {
+        "rule": "Maintain user session data throughout conversation",
+        "contexts": ["user-session"],
+        "lifespanCount": 100,
+        "parameters": ["user-id", "user-role", "session-start"]
+      },
+      {
+        "rule": "Clear booking contexts after booking completion",
+        "contexts": ["booking-confirmation", "awaiting-payment"],
+        "action": "clear",
+        "trigger": "booking-complete"
+      },
+      {
+        "rule": "Extend adding-space contexts when user is actively filling form",
+        "contexts": ["adding-space-*"],
+        "action": "extend",
+        "lifespanCount": 10,
+        "trigger": "user-provides-input"
+      }
+    ]
+  }
+}
+
+
+

@@ -1,0 +1,1025 @@
+{
+  "intents": [
+    {
+      "name": "Welcome",
+      "priority": 1,
+      "trainingPhrases": [
+        "hi",
+        "hello",
+        "hey",
+        "good morning",
+        "good afternoon",
+        "good evening",
+        "start",
+        "help",
+        "I need help"
+      ],
+      "responses": [
+        "Hello! Welcome to ParkShare! 🚗 I'm your parking assistant. I can help you find parking spaces, manage bookings, or assist with hosting. What would you like to do today?",
+        "Hi there! I'm the ParkShare assistant. Whether you're looking to park or list a space, I'm here to help. What can I do for you?",
+        "Welcome to ParkShare! I can help you with finding parking, managing your bookings, or setting up spaces as a host. How can I assist you?"
+      ],
+      "contexts": {
+        "output": ["welcome"]
+      }
+    },
+    {
+      "name": "Default Fallback",
+      "priority": 0,
+      "trainingPhrases": [],
+      "responses": [
+        "I'm not sure I understand. Could you rephrase that? I can help with finding parking, bookings, payments, or hosting spaces.",
+        "I didn't quite get that. Would you like to search for parking, check your bookings, or get help with something else?",
+        "Sorry, I'm having trouble understanding. Try asking me about parking spaces, bookings, payments, or how to become a host."
+      ]
+    },
+    {
+      "name": "FindParking",
+      "priority": 2,
+      "trainingPhrases": [
+        "I need parking",
+        "Find me a parking spot",
+        "Where can I park",
+        "I'm looking for parking",
+        "Find parking near me",
+        "I need a parking space",
+        "Search for parking",
+        "Available parking spots",
+        "Show me parking options",
+        "I need to park my car"
+      ],
+      "responses": [
+        "I'd be happy to help you find parking! Where are you looking to park? You can tell me an address, landmark, or area.",
+        "Great! Let me help you find the perfect parking spot. What location are you interested in?",
+        "I can help you search for available parking spaces. Where would you like to park?"
+      ],
+      "contexts": {
+        "output": ["awaiting-location"]
+      },
+      "action": "findParking.request"
+    },
+    {
+      "name": "FindParking-Location",
+      "priority": 2,
+      "trainingPhrases": [
+        "Near @location",
+        "At @location",
+        "In @location",
+        "Around @location",
+        "@location area",
+        "I want to park at @location",
+        "Looking for parking in @location",
+        "@location"
+      ],
+      "parameters": [
+        {
+          "name": "location",
+          "entityType": "@sys.location",
+          "required": true,
+          "prompts": ["Where exactly would you like to park?"]
+        }
+      ],
+      "responses": [
+        "Looking for parking spaces in $location. What dates do you need the parking for? Please provide start date and time.",
+        "Perfect! I'm searching for available parking in $location. When do you need the space? (e.g., 'tomorrow at 9 AM' or 'Dec 25 from 2 PM')",
+        "Got it! Searching parking near $location. What's your preferred time? When do you need to park?"
+      ],
+      "contexts": {
+        "input": ["awaiting-location"],
+        "output": ["has-location"]
+      },
+      "action": "findParking.setLocation"
+    },
+    {
+      "name": "FindParking-DateTime",
+      "priority": 2,
+      "trainingPhrases": [
+        "@date-time",
+        "From @date-time to @date-time",
+        "Starting @date-time",
+        "On @date at @time",
+        "I need it for @duration",
+        "For @number hours",
+        "For @number days",
+        "Tomorrow at @time",
+        "Next @day-of-week at @time"
+      ],
+      "parameters": [
+        {
+          "name": "start-time",
+          "entityType": "@sys.date-time",
+          "required": true,
+          "prompts": ["When do you need to start parking?"]
+        },
+        {
+          "name": "duration",
+          "entityType": "@sys.duration",
+          "required": false
+        },
+        {
+          "name": "end-time",
+          "entityType": "@sys.date-time",
+          "required": false
+        }
+      ],
+      "responses": [
+        "Excellent! I found several parking spaces in $location starting $start-time. Would you like to see options sorted by price, rating, or distance?",
+        "Great! Here are available parking spaces for $start-time in $location. I can show you spaces by: 1) Lowest price 2) Highest rating 3) Nearest distance. Which do you prefer?",
+        "Perfect! I have parking options in $location for your requested time. How would you like me to sort them - by price, rating, or proximity?"
+      ],
+      "contexts": {
+        "input": ["has-location"],
+        "output": ["search-results"]
+      },
+      "action": "findParking.searchWithDateTime"
+    },
+    {
+      "name": "FilterParking-Price",
+      "priority": 2,
+      "trainingPhrases": [
+        "Show cheapest",
+        "Sort by price",
+        "Lowest price first",
+        "Most affordable",
+        "Under @number shillings",
+        "Less than @number KSH",
+        "Budget options",
+        "Cheap parking",
+        "Affordable parking"
+      ],
+      "parameters": [
+        {
+          "name": "max-price",
+          "entityType": "@sys.number",
+          "required": false
+        }
+      ],
+      "responses": [
+        "Here are the most affordable parking options in $location:\n\n1. **$space1-title** - KSH $space1-price/hour ⭐ $space1-rating\n2. **$space2-title** - KSH $space2-price/hour ⭐ $space2-rating\n3. **$space3-title** - KSH $space3-price/hour ⭐ $space3-rating\n\nWould you like more details about any of these?",
+        "I've sorted the results by price. The cheapest options are showing first. Would you like to see details about a specific parking space?",
+        "Showing budget-friendly parking spaces. Type a number (1-3) to see full details and book."
+      ],
+      "contexts": {
+        "input": ["search-results"],
+        "output": ["viewing-results"]
+      },
+      "action": "filterParking.byPrice"
+    },
+    {
+      "name": "FilterParking-Rating",
+      "priority": 2,
+      "trainingPhrases": [
+        "Highest rated",
+        "Best reviews",
+        "Top rated",
+        "Sort by rating",
+        "Best parking spaces",
+        "Highest rating first",
+        "5 star parking"
+      ],
+      "responses": [
+        "Here are the top-rated parking spaces in $location:\n\n1. **$space1-title** - ⭐ $space1-rating ($space1-reviews reviews) - KSH $space1-price/hour\n2. **$space2-title** - ⭐ $space2-rating ($space2-reviews reviews) - KSH $space2-price/hour\n3. **$space3-title** - ⭐ $space3-rating ($space3-reviews reviews) - KSH $space3-price/hour\n\nInterested in any of these?",
+        "Showing highest-rated parking options first. These spaces have excellent reviews from other drivers!",
+        "Here are the best-reviewed parking spaces. Would you like to book one?"
+      ],
+      "contexts": {
+        "input": ["search-results"],
+        "output": ["viewing-results"]
+      },
+      "action": "filterParking.byRating"
+    },
+    {
+      "name": "FilterParking-Distance",
+      "priority": 2,
+      "trainingPhrases": [
+        "Nearest",
+        "Closest parking",
+        "Sort by distance",
+        "Walking distance",
+        "Nearby parking",
+        "Close to me",
+        "Nearest available"
+      ],
+      "responses": [
+        "Here are the closest parking spaces to $location:\n\n1. **$space1-title** - $space1-distance away - KSH $space1-price/hour\n2. **$space2-title** - $space2-distance away - KSH $space2-price/hour\n3. **$space3-title** - $space3-distance away - KSH $space3-price/hour\n\nWant to book one?",
+        "Showing parking spaces sorted by proximity. These are the closest options to your location.",
+        "Here are the nearest parking spaces. Select one to see full details and book."
+      ],
+      "contexts": {
+        "input": ["search-results"],
+        "output": ["viewing-results"]
+      },
+      "action": "filterParking.byDistance"
+    },
+    {
+      "name": "ViewParkingDetails",
+      "priority": 2,
+      "trainingPhrases": [
+        "Tell me more about @ordinal",
+        "Details for @ordinal",
+        "Show @ordinal option",
+        "Number @number",
+        "@ordinal one",
+        "I want to see the @ordinal",
+        "More info on @number"
+      ],
+      "parameters": [
+        {
+          "name": "choice",
+          "entityType": "@sys.ordinal",
+          "required": true
+        }
+      ],
+      "responses": [
+        "📍 **$space-title**\n\n⭐ $space-rating ($space-reviews reviews)\n💰 KSH $space-price/hour\n📏 $space-distance from $location\n\n**Features:**\n$space-features\n\n**Description:**\n$space-description\n\n**Host:** $host-name\n\nWould you like to book this space?",
+        "Here are the full details for this parking space:\n\n**$space-title**\nPrice: KSH $space-price/hour\nType: $space-type\nRating: ⭐ $space-rating\n\n$space-description\n\nReady to book?",
+        "**Parking Space Details:**\n\nLocation: $space-address\nPrice: KSH $space-price/hour\nAvailable: $space-availability\n\nFeatures: $space-features\n\nShall I proceed with booking?"
+      ],
+      "contexts": {
+        "input": ["viewing-results"],
+        "output": ["viewing-details"]
+      },
+      "action": "viewParkingDetails"
+    },
+    {
+      "name": "BookParking-Confirm",
+      "priority": 2,
+      "trainingPhrases": [
+        "Book this space",
+        "I want to book",
+        "Yes book it",
+        "Confirm booking",
+        "Book now",
+        "Reserve this spot",
+        "I'll take it",
+        "Yes please",
+        "Proceed with booking"
+      ],
+      "responses": [
+        "Great! Let me confirm your booking:\n\n📍 **$space-title**\n📅 Start: $start-time\n📅 End: $end-time\n⏱️ Duration: $duration\n💰 Total: KSH $total-price\n\nIs this correct?",
+        "Perfect! Here's your booking summary:\n\nParking: $space-title\nWhen: $start-time to $end-time\nPrice: KSH $total-price\n\nConfirm to proceed with payment.",
+        "Booking Summary:\n- Space: $space-title\n- Date: $start-time\n- Duration: $duration\n- Total Cost: KSH $total-price\n\nShall I proceed to payment?"
+      ],
+      "contexts": {
+        "input": ["viewing-details"],
+        "output": ["booking-confirmation"]
+      },
+      "action": "bookParking.confirmDetails"
+    },
+    {
+      "name": "BookParking-Payment",
+      "priority": 2,
+      "trainingPhrases": [
+        "Yes confirm",
+        "Proceed to payment",
+        "Pay now",
+        "Confirm and pay",
+        "Yes that's correct",
+        "Looks good",
+        "Confirmed"
+      ],
+      "responses": [
+        "Perfect! Processing your payment of KSH $total-price via M-Pesa. Please enter your M-Pesa phone number (format: 254XXXXXXXXX):",
+        "Great! To complete your booking, I need your M-Pesa number for payment. Please provide your phone number:",
+        "Excellent! Your total is KSH $total-price. What's your M-Pesa phone number to complete the payment?"
+      ],
+      "contexts": {
+        "input": ["booking-confirmation"],
+        "output": ["awaiting-payment"]
+      },
+      "action": "bookParking.requestPayment"
+    },
+    {
+      "name": "Payment-PhoneNumber",
+      "priority": 2,
+      "trainingPhrases": [
+        "@phone-number",
+        "My number is @phone-number",
+        "@phone-number",
+        "254@sys.number",
+        "+254@sys.number"
+      ],
+      "parameters": [
+        {
+          "name": "phone-number",
+          "entityType": "@sys.phone-number",
+          "required": true,
+          "prompts": ["Please provide your M-Pesa phone number"]
+        }
+      ],
+      "responses": [
+        "Processing M-Pesa STK Push to $phone-number for KSH $total-price. Please check your phone and enter your M-Pesa PIN to complete the payment. 📱",
+        "Payment request sent to $phone-number! Please approve the M-Pesa prompt on your phone. Waiting for confirmation...",
+        "STK Push initiated! Check your phone ($phone-number) for the M-Pesa payment prompt. Enter your PIN to complete the booking."
+      ],
+      "contexts": {
+        "input": ["awaiting-payment"],
+        "output": ["payment-processing"]
+      },
+      "action": "payment.initiateMpesa"
+    },
+    {
+      "name": "Payment-Success",
+      "priority": 2,
+      "trainingPhrases": [],
+      "responses": [
+        "✅ Payment successful! Your booking is confirmed.\n\n**Booking Reference:** $booking-id\n**Receipt Number:** $mpesa-receipt\n\n📍 $space-title\n📅 $start-time to $end-time\n💰 KSH $total-price\n\nYou can view your booking details at any time by asking 'show my bookings'. Enjoy your parking! 🚗",
+        "🎉 Booking confirmed! Payment of KSH $total-price received.\n\nBooking ID: $booking-id\nM-Pesa Receipt: $mpesa-receipt\n\nYou'll receive directions to the parking space via email. Need anything else?",
+        "Success! Your parking is booked and paid for!\n\nReceipt: $mpesa-receipt\nParking: $space-title\nHost Contact: $host-phone\n\nSee you there! 🚗"
+      ],
+      "contexts": {
+        "input": ["payment-processing"]
+      },
+      "action": "payment.success"
+    },
+    {
+      "name": "Payment-Failed",
+      "priority": 2,
+      "trainingPhrases": [],
+      "responses": [
+        "❌ Payment failed. The transaction was not completed. Would you like to try again with a different M-Pesa number?",
+        "Unfortunately, the payment didn't go through. This could be due to insufficient funds or a cancelled transaction. Would you like to retry?",
+        "Payment unsuccessful. Please check your M-Pesa balance and try again. Type 'retry payment' to try again."
+      ],
+      "contexts": {
+        "input": ["payment-processing"],
+        "output": ["payment-failed"]
+      },
+      "action": "payment.failed"
+    },
+    {
+      "name": "ViewBookings",
+      "priority": 2,
+      "trainingPhrases": [
+        "My bookings",
+        "Show my bookings",
+        "View my reservations",
+        "What are my bookings",
+        "Check my bookings",
+        "Upcoming bookings",
+        "My parking reservations",
+        "Booking history",
+        "Past bookings"
+      ],
+      "responses": [
+        "Here are your bookings:\n\n**Active Bookings:**\n$active-bookings\n\n**Upcoming:**\n$upcoming-bookings\n\nType a booking ID to see details or cancel.",
+        "Your ParkShare Bookings:\n\n✅ Active: $active-count\n📅 Upcoming: $upcoming-count\n📜 Completed: $completed-count\n\nWhich would you like to see?",
+        "I found $total-bookings bookings. Here are your active and upcoming ones:\n\n$bookings-list\n\nWant details on any specific booking?"
+      ],
+      "contexts": {
+        "output": ["viewing-bookings"]
+      },
+      "action": "viewBookings.list"
+    },
+    {
+      "name": "CancelBooking",
+      "priority": 2,
+      "trainingPhrases": [
+        "Cancel booking",
+        "I want to cancel",
+        "Cancel my reservation",
+        "Cancel booking @booking-id",
+        "Remove booking",
+        "Delete booking"
+      ],
+      "parameters": [
+        {
+          "name": "booking-id",
+          "entityType": "@booking-id",
+          "required": true,
+          "prompts": ["Which booking would you like to cancel? Please provide the booking ID."]
+        }
+      ],
+      "responses": [
+        "Are you sure you want to cancel booking $booking-id?\n\n📍 $space-title\n📅 $start-time to $end-time\n💰 Paid: KSH $total-price\n\nYou may be eligible for a refund depending on the cancellation policy. Confirm cancellation?",
+        "Booking Cancellation:\n\nID: $booking-id\nSpace: $space-title\nRefund: $refund-amount (if applicable)\n\nType 'confirm' to proceed with cancellation.",
+        "To cancel booking $booking-id:\n\nThis will free up the parking space and process any applicable refund. Are you sure you want to cancel?"
+      ],
+      "contexts": {
+        "input": ["viewing-bookings"],
+        "output": ["canceling-booking"]
+      },
+      "action": "cancelBooking.request"
+    },
+    {
+      "name": "CancelBooking-Confirm",
+      "priority": 2,
+      "trainingPhrases": [
+        "Yes cancel it",
+        "Confirm cancellation",
+        "Yes I'm sure",
+        "Proceed",
+        "Confirm"
+      ],
+      "responses": [
+        "✅ Booking $booking-id has been cancelled. Refund of KSH $refund-amount will be processed within 3-5 business days.",
+        "Cancellation successful! Your booking has been removed and the host has been notified. Refund: KSH $refund-amount",
+        "Done! Booking cancelled. You'll receive the refund confirmation via email shortly."
+      ],
+      "contexts": {
+        "input": ["canceling-booking"]
+      },
+      "action": "cancelBooking.confirm"
+    },
+    {
+      "name": "BecomeHost",
+      "priority": 2,
+      "trainingPhrases": [
+        "I want to be a host",
+        "How to become a host",
+        "List my parking space",
+        "Add a parking space",
+        "I have a parking spot to rent",
+        "Become a host",
+        "Host my space",
+        "Rent out my parking",
+        "Make money with parking"
+      ],
+      "responses": [
+        "That's great! You can earn money by renting out your parking space. 💰\n\nTo get started:\n1. Sign up as a Host (if you haven't already)\n2. Add your parking space details\n3. Set your pricing\n4. Start accepting bookings!\n\nWould you like me to guide you through adding your first parking space?",
+        "Excellent! Becoming a ParkShare host is easy and profitable. Here's how:\n\n✅ Create a host profile\n✅ List your parking space(s)\n✅ Set your own prices\n✅ Accept or decline bookings\n✅ Get paid directly\n\nShall we start by adding your parking space?",
+        "Welcome to ParkShare hosting! 🎉\n\nAs a host, you can:\n- Earn passive income\n- Control your availability\n- Set your own rates\n- Get insurance coverage\n\nReady to add your first parking space?"
+      ],
+      "contexts": {
+        "output": ["becoming-host"]
+      },
+      "action": "becomeHost.intro"
+    },
+    {
+      "name": "AddSpace-Start",
+      "priority": 2,
+      "trainingPhrases": [
+        "Add parking space",
+        "List a space",
+        "Create new space",
+        "Add my parking",
+        "Yes add space",
+        "I want to add a space"
+      ],
+      "responses": [
+        "Perfect! Let's add your parking space. First, what's the address of your parking space?",
+        "Great! I'll help you list your space. Where is your parking space located? Please provide the full address.",
+        "Let's get started! What's the location/address of the parking space you want to list?"
+      ],
+      "contexts": {
+        "input": ["becoming-host"],
+        "output": ["adding-space-location"]
+      },
+      "action": "addSpace.requestLocation"
+    },
+    {
+      "name": "AddSpace-Location",
+      "priority": 2,
+      "trainingPhrases": [
+        "@location",
+        "At @location",
+        "The address is @location",
+        "@sys.address"
+      ],
+      "parameters": [
+        {
+          "name": "address",
+          "entityType": "@sys.location",
+          "required": true,
+          "prompts": ["What's the address of your parking space?"]
+        }
+      ],
+      "responses": [
+        "Got it! Address: $address\n\nNow, what type of parking space is it?\n1. Driveway\n2. Garage\n3. Parking Lot\n4. Street Parking",
+        "Perfect! Location set to $address.\n\nWhat kind of parking space are you offering? (Driveway/Garage/Lot/Street)",
+        "Address confirmed: $address\n\nPlease select the parking type from: Driveway, Garage, Lot, or Street"
+      ],
+      "contexts": {
+        "input": ["adding-space-location"],
+        "output": ["adding-space-type"]
+      },
+      "action": "addSpace.setLocation"
+    },
+    {
+      "name": "AddSpace-Type",
+      "priority": 2,
+      "trainingPhrases": [
+        "Driveway",
+        "Garage",
+        "Parking lot",
+        "Street parking",
+        "It's a @parking-type",
+        "@parking-type"
+      ],
+      "parameters": [
+        {
+          "name": "space-type",
+          "entityType": "@parking-type",
+          "required": true
+        }
+      ],
+      "responses": [
+        "Excellent! $space-type it is.\n\nHow much do you want to charge per hour? (in KSH)",
+        "$space-type parking noted. Now, what's your hourly rate? Please provide the price in KSH.",
+        "Got it - $space-type. What would you like to charge per hour?"
+      ],
+      "contexts": {
+        "input": ["adding-space-type"],
+        "output": ["adding-space-pricing"]
+      },
+      "action": "addSpace.setType"
+    },
+    {
+      "name": "AddSpace-Pricing",
+      "priority": 2,
+      "trainingPhrases": [
+        "@number shillings per hour",
+        "KSH @number",
+        "@number per hour",
+        "@number",
+        "@number KSH/hour"
+      ],
+      "parameters": [
+        {
+          "name": "hourly-rate",
+          "entityType": "@sys.number",
+          "required": true,
+          "prompts": ["What's your hourly rate in KSH?"]
+        }
+      ],
+      "responses": [
+        "Great! KSH $hourly-rate per hour.\n\nDo you also want to set a daily rate? (Optional - just say 'no' to skip)",
+        "Perfect! $hourly-rate KSH/hour set. Would you like to offer a discounted daily rate?",
+        "Hourly rate: KSH $hourly-rate ✓\n\nOptional: What about a daily rate? (or say 'skip' to continue)"
+      ],
+      "contexts": {
+        "input": ["adding-space-pricing"],
+        "output": ["adding-space-daily-rate"]
+      },
+      "action": "addSpace.setHourlyRate"
+    },
+    {
+      "name": "AddSpace-DailyRate",
+      "priority": 2,
+      "trainingPhrases": [
+        "@number per day",
+        "KSH @number daily",
+        "@number for full day",
+        "No daily rate",
+        "Skip",
+        "No thanks"
+      ],
+      "parameters": [
+        {
+          "name": "daily-rate",
+          "entityType": "@sys.number",
+          "required": false
+        }
+      ],
+      "responses": [
+        "Noted! Now, what features does your parking space have? (e.g., Covered, Security, EV Charging, CCTV, 24/7 Access)\n\nList them separated by commas:",
+        "Great! What amenities/features does your parking space offer? Examples:\n- Covered parking\n- Security guard\n- CCTV\n- EV charging\n- 24/7 access\n\nPlease list the features:",
+        "Perfect! Tell me about the features of your space. What makes it special? (e.g., covered, secure, accessible)"
+      ],
+      "contexts": {
+        "input": ["adding-space-daily-rate"],
+        "output": ["adding-space-features"]
+      },
+      "action": "addSpace.setDailyRate"
+    },
+    {
+      "name": "AddSpace-Features",
+      "priority": 2,
+      "trainingPhrases": [
+        "@features-list",
+        "It has @features",
+        "@feature, @feature, @feature"
+      ],
+      "parameters": [
+        {
+          "name": "features",
+          "entityType": "@sys.any",
+          "required": true,
+          "prompts": ["What features does your parking space have?"]
+        }
+      ],
+      "responses": [
+        "Excellent! Features added: $features\n\nNow, give your parking space a catchy title (e.g., 'Secure Covered Parking Near Mall')",
+        "Great features! $features\n\nWhat would you like to call this parking space? Give it an appealing title:",
+        "Perfect! Your space has: $features\n\nLastly, create a title for your listing:"
+      ],
+      "contexts": {
+        "input": ["adding-space-features"],
+        "output": ["adding-space-title"]
+      },
+      "action": "addSpace.setFeatures"
+    },
+    {
+      "name": "AddSpace-Title",
+      "priority": 2,
+      "trainingPhrases": [
+        "@title",
+        "Call it @title",
+        "The title is @title"
+      ],
+      "parameters": [
+        {
+          "name": "title",
+          "entityType": "@sys.any",
+          "required": true,
+          "prompts": ["What title would you like for your parking space?"]
+        }
+      ],
+      "responses": [
+        "Perfect! And finally, write a brief description of your parking space to attract drivers:",
+        "Great title! '$title'\n\nNow add a description to give drivers more details about your space:",
+        "Love it! '$title'\n\nLast step - provide a detailed description of your parking space:"
+      ],
+      "contexts": {
+        "input": ["adding-space-title"],
+        "output": ["adding-space-description"]
+      },
+      "action": "addSpace.setTitle"
+    },
+    {
+      "name": "AddSpace-Description",
+      "priority": 2,
+      "trainingPhrases": [
+        "@description",
+        "Description: @description"
+      ],
+      "parameters": [
+        {
+          "name": "description",
+          "entityType": "@sys.any",
+          "required": true,
+          "prompts": ["Please provide a description for your parking space"]
+        }
+      ],
+      "responses": [
+        "Perfect! Here's your parking space listing:\n\n📍 **$title**\n📍 Location: $address\n🚗 Type: $space-type\n💰 KSH $hourly-rate/hour\n✨ Features: $features\n\n$description\n\nReady to publish this listing?",
+        "Excellent! Let me confirm your listing:\n\nTitle: $title\nAddress: $address\nType: $space-type\nPrice: KSH $hourly-rate/hour\nFeatures: $features\nDescription: $description\n\nShall I create this listing?",
+        "Great! Your listing is ready:\n\n$title - KSH $hourly-rate/hr\n$address\n$space-type parking\n\nFeatures: $features\n\nConfirm to publish?"
+      ],
+      "contexts": {
+        "input": ["adding-space-description"],
+        "output": ["confirming-space"]
+      },
+      "action": "addSpace.setDescription"
+    },
+    {
+      "name": "AddSpace-Confirm",
+      "priority": 2,
+      "trainingPhrases": [
+        "Yes publish",
+        "Confirm",
+        "Create listing",
+        "Publish it",
+        "Yes that's correct"
+      ],
+      "responses": [
+        "🎉 Congratulations! Your parking space has been listed successfully!\n\n**Listing ID:** $space-id\n\nYou can now start receiving bookings. Manage your space from the Host Dashboard. Good luck! 💰",
+        "✅ Success! Your parking space is now live on ParkShare.\n\nSpace ID: $space-id\n\nDrivers can now discover and book your space. You'll be notified of new booking requests.",
+        "All set! Your parking space is now available for drivers to book. 🚗\n\nManage bookings and view earnings from your host dashboard. Welcome to ParkShare hosting!"
+      ],
+      "contexts": {
+        "input": ["confirming-space"]
+      },
+      "action": "addSpace.publish"
+    },
+    {
+      "name": "ViewEarnings",
+      "priority": 2,
+      "trainingPhrases": [
+        "My earnings",
+        "How much have I earned",
+        "Show earnings",
+        "Revenue",
+        "My income",
+        "Payment history",
+        "How much money did I make",
+        "Show my payouts"
+      ],
+      "responses": [
+        "Here's your earnings summary:\n\n💰 **Total Earnings:** KSH $total-earnings\n📅 **This Month:** KSH $monthly-earnings\n📊 **Completed Bookings:** $completed-bookings\n⏳ **Pending Payouts:** KSH $pending-payouts\n\nWould you like to see a detailed breakdown?",
+        "Your ParkShare Earnings:\n\nAll Time: KSH $total-earnings\nThis Month: KSH $monthly-earnings\nLast Payout: KSH $last-payout on $payout-date\n\nNext payout scheduled for: $next-payout-date",
+        "Earnings Dashboard:\n\n✅ Completed: KSH $completed-earnings\n⏳ Pending: KSH $pending-earnings\n📈 Average per booking: KSH $average-booking\n\nNeed more details?"
+      ],
+      "contexts": {
+        "output": ["viewing-earnings"]
+      },
+      "action": "viewEarnings.summary"
+    },
+    {
+      "name": "ManageSpaces",
+      "priority": 2,
+      "trainingPhrases": [
+        "My spaces",
+        "Show my parking spaces",
+        "View my listings",
+        "Manage spaces",
+        "My parking listings",
+        "Edit my space"
+      ],
+      "responses": [
+        "Here are your parking spaces:\n\n$spaces-list\n\nType a space number to view details or edit.",
+        "Your Parking Spaces:\n\n$spaces-count total listings\n\n$spaces-list\n\nWhich one would you like to manage?",
+        "You have $spaces-count active listings:\n\n$spaces-list\n\nSelect a space to view bookings or edit details."
+      ],
+      "contexts": {
+        "output": ["managing-spaces"]
+      },
+      "action": "manageSpaces.list"
+    },
+    {
+      "name": "ReviewSpace",
+      "priority": 2,
+      "trainingPhrases": [
+        "Leave a review",
+        "Write a review",
+        "Rate the parking",
+        "Review my last booking",
+        "I want to review",
+        "Give feedback"
+      ],
+      "responses": [
+        "I'd be happy to help you leave a review! Which booking would you like to review?\n\nYour recent completed bookings:\n$recent-bookings",
+        "Great! Reviews help other drivers. Which parking space would you like to review? Please provide the booking ID.",
+        "Let's write a review. Which of your completed bookings would you like to review?"
+      ],
+      "contexts": {
+        "output": ["writing-review"]
+      },
+      "action": "review.start"
+    },
+    {
+      "name": "ReviewSpace-SelectBooking",
+      "priority": 2,
+      "trainingPhrases": [
+        "@booking-id",
+        "Booking @booking-id",
+        "The @ordinal one"
+      ],
+      "parameters": [
+        {
+          "name": "booking-id",
+          "entityType": "@booking-id",
+          "required": true
+        }
+      ],
+      "responses": [
+        "Perfect! You're reviewing:\n📍 $space-title\n📅 $booking-date\n\nHow would you rate this parking space? (1-5 stars)",
+        "Great! Let's review booking $booking-id ($space-title).\n\nPlease rate from 1 to 5 stars:",
+        "Reviewing: $space-title\n\nOn a scale of 1-5, how would you rate this parking space?"
+      ],
+      "contexts": {
+        "input": ["writing-review"],
+        "output": ["review-rating"]
+      },
+      "action": "review.selectBooking"
+    },
+    {
+      "name": "ReviewSpace-Rating",
+      "priority": 2,
+      "trainingPhrases": [
+        "@number stars",
+        "@number out of 5",
+        "@number/5",
+        "@number",
+        "I'd give it @number"
+      ],
+      "parameters": [
+        {
+          "name": "rating",
+          "entityType": "@sys.number",
+          "required": true,
+          "prompts": ["How many stars would you give? (1-5)"]
+        }
+      ],
+      "responses": [
+        "Thanks! $rating stars ⭐\n\nNow, would you like to add a written review? Share your experience with other drivers:",
+        "Great! $rating star rating noted.\n\nPlease write your review (or type 'skip' to submit without a comment):",
+        "$rating/5 stars - got it!\n\nAdd any comments about your experience?"
+      ],
+      "contexts": {
+        "input": ["review-rating"],
+        "output": ["review-comment"]
+      },
+      "action": "review.setRating"
+    },
+    {
+      "name": "ReviewSpace-Comment",
+      "priority": 2,
+      "trainingPhrases": [
+        "@comment",
+        "My review: @comment",
+        "Skip"
+      ],
+      "parameters": [
+        {
+          "name": "comment",
+          "entityType": "@sys.any",
+          "required": false
+        }
+      ],
+      "responses": [
+        "✅ Review submitted! Thank you for your feedback.\n\n⭐ $rating stars\n💬 \"$comment\"\n\nYour review helps the ParkShare community!",
+        "Perfect! Your review has been posted:\n\nRating: ⭐ $rating/5\nComment: $comment\n\nThank you for sharing your experience!",
+        "Review published successfully! The host and other drivers appreciate your feedback. 🙏"
+      ],
+      "contexts": {
+        "input": ["review-comment"]
+      },
+      "action": "review.submit"
+    },
+    {
+      "name": "Support",
+      "priority": 2,
+      "trainingPhrases": [
+        "I need help",
+        "Support",
+        "Contact support",
+        "Help me",
+        "I have a problem",
+        "Customer service",
+        "Talk to someone"
+      ],
+      "responses": [
+        "I'm here to help! What issue are you experiencing?\n\n1. Payment issues\n2. Booking problems\n3. Account issues\n4. Space listing help\n5. Report a problem\n6. Other\n\nPlease select a category or describe your issue.",
+        "ParkShare Support - I'm here to assist you!\n\nWhat do you need help with?\n- Payments\n- Bookings\n- Account\n- Technical issues\n- Other",
+        "How can I help you today? Please describe your issue or select from:\n\n📱 Technical Support\n💳 Payment Help\n🚗 Booking Assistance\n🏠 Host Support"
+      ],
+      "contexts": {
+        "output": ["support-mode"]
+      },
+      "action": "support.start"
+    },
+    {
+      "name": "Support-Payment",
+      "priority": 2,
+      "trainingPhrases": [
+        "Payment issue",
+        "Payment problem",
+        "M-Pesa not working",
+        "Payment failed",
+        "Refund",
+        "I didn't receive my money"
+      ],
+      "responses": [
+        "I understand you're having a payment issue. Let me help you with that.\n\nPlease provide:\n1. Your booking ID or transaction reference\n2. Brief description of the issue\n\nOur payment team will investigate and respond within 24 hours.",
+        "Payment issues can be frustrating. I'm here to help!\n\nCan you provide:\n- Transaction/Booking ID\n- M-Pesa receipt number (if applicable)\n- Description of the problem\n\nI'll escalate this to our payment team immediately.",
+        "Let's resolve your payment issue. Please share:\n\n- What happened?\n- Booking/Transaction ID\n- Amount involved\n\nWe take payment issues seriously and will address this promptly."
+      ],
+      "contexts": {
+        "input": ["support-mode"],
+        "output": ["support-payment"]
+      },
+      "action": "support.payment"
+    },
+    {
+      "name": "Support-Escalate",
+      "priority": 2,
+      "trainingPhrases": [
+        "Talk to a human",
+        "Human agent",
+        "Real person",
+        "Escalate",
+        "Not helpful",
+        "I need more help"
+      ],
+      "responses": [
+        "I understand you need additional assistance. Let me connect you with our support team.\n\n📧 Email: support@parkshare.com\n📱 WhatsApp: +254712345678\n🕐 Hours: Mon-Fri 8AM-8PM, Sat-Sun 9AM-5PM\n\nA support agent will contact you within 2 hours. Your reference number is: $ticket-id",
+        "Absolutely! I'm creating a support ticket for you.\n\n**Ticket ID:** $ticket-id\n\nOur team will reach out to you shortly via:\n- Email: $user-email\n- Phone: $user-phone\n\nExpected response time: 1-2 hours",
+        "I've escalated your issue to our human support team.\n\nTicket #$ticket-id created.\n\nContact options:\n📧 support@parkshare.com\n📱 +254712345678\n\nWe'll get back to you soon!"
+      ],
+      "contexts": {
+        "input": ["support-mode"]
+      },
+      "action": "support.escalate"
+    },
+    {
+      "name": "FAQ-HowItWorks",
+      "priority": 1,
+      "trainingPhrases": [
+        "How does ParkShare work",
+        "How do I use this",
+        "What is ParkShare",
+        "Tell me about ParkShare",
+        "How does it work"
+      ],
+      "responses": [
+        "ParkShare connects drivers looking for parking with hosts who have spaces to rent! 🚗\n\n**For Drivers:**\n1. Search for parking in your desired location\n2. Book and pay securely via M-Pesa\n3. Park with confidence!\n\n**For Hosts:**\n1. List your parking space\n2. Set your own prices\n3. Earn passive income!\n\nWhat would you like to do?",
+        "Welcome to ParkShare - The easiest way to find or rent parking! 🅿️\n\nDrivers can find and book parking spaces instantly.\nHosts can earn money from unused parking spaces.\n\nAll payments are secure, and we provide insurance coverage for hosts.\n\nWant to find parking or become a host?",
+        "ParkShare is a peer-to-peer parking marketplace:\n\n✅ Find parking anywhere\n✅ Book instantly with M-Pesa\n✅ Earn money from your driveway\n✅ Safe and secure transactions\n\nHow can I help you get started?"
+      ]
+    },
+    {
+      "name": "FAQ-Pricing",
+      "priority": 1,
+      "trainingPhrases": [
+        "How much does it cost",
+        "Pricing",
+        "What are your fees",
+        "Commission",
+        "Service charge",
+        "How much do you charge"
+      ],
+      "responses": [
+        "ParkShare Pricing:\n\n**For Drivers:**\n- No signup fees\n- Pay only for parking you book\n- Prices set by individual hosts\n- Small service fee (10%) added to bookings\n\n**For Hosts:**\n- Free to list your space\n- 15% commission on bookings\n- You keep 85% of earnings\n- No hidden fees\n\nStart parking or hosting today!",
+        "Our pricing is transparent and fair:\n\n**Drivers:** Pay the host's rate + 10% service fee\n**Hosts:** Keep 85% of all earnings\n\nNo subscription fees, no hidden charges!\n\nPrices vary by location and host. Search to see rates in your area.",
+        "Transparent Pricing:\n\n🚗 Drivers: Host's rate + small service fee\n🏠 Hosts: Earn 85% of booking price\n\nNo membership fees for anyone!\n\nWant to see prices in your area?"
+      ]
+    },
+    {
+      "name": "FAQ-Safety",
+      "priority": 1,
+      "trainingPhrases": [
+        "Is it safe",
+        "Is ParkShare secure",
+        "Safety",
+        "Is my car safe",
+        "What about security"
+      ],
+      "responses": [
+        "Your safety is our top priority! 🔒\n\n✅ All hosts are verified\n✅ Secure M-Pesa payments\n✅ Insurance coverage available\n✅ 24/7 customer support\n✅ Driver and host ratings/reviews\n✅ Secure messaging system\n\nEvery parking space is rated by real users. Always check reviews before booking!",
+        "ParkShare takes security seriously:\n\n- Identity verification for all users\n- Encrypted payment processing\n- Insurance protection\n- User review system\n- Reported incidents handled promptly\n- Support team available 24/7\n\nYour peace of mind matters to us!",
+        "Safety Features:\n\n🔐 Verified users only\n💳 Secure payments (M-Pesa)\n🛡️ Insurance available\n⭐ Review system\n👮 Incident reporting\n📞 24/7 support\n\nBook with confidence!"
+      ]
+    },
+    {
+      "name": "FAQ-Cancellation",
+      "priority": 1,
+      "trainingPhrases": [
+        "Cancellation policy",
+        "Can I cancel",
+        "What if I cancel",
+        "Refund policy",
+        "How to cancel booking"
+      ],
+      "responses": [
+        "ParkShare Cancellation Policy:\n\n✅ **Free cancellation** up to 24 hours before booking\n✅ 50% refund if cancelled 12-24 hours before\n❌ No refund if cancelled less than 12 hours before\n\nRefunds are processed within 3-5 business days to your M-Pesa.\n\nTo cancel, go to 'My Bookings' or tell me the booking ID.",
+        "Our cancellation policy is flexible:\n\n- More than 24h before: Full refund\n- 12-24h before: 50% refund\n- Less than 12h: No refund\n\nExceptions for emergencies - contact support.\n\nWant to cancel a booking?",
+        "Cancellation & Refunds:\n\n🕐 Cancel early (24h+) → Full refund\n🕐 Cancel 12-24h before → Half refund\n🕐 Cancel last minute → No refund\n\nRefunds take 3-5 business days.\n\nNeed to cancel a booking now?"
+      ]
+    },
+    {
+      "name": "AccountInfo",
+      "priority": 1,
+      "trainingPhrases": [
+        "My account",
+        "Account details",
+        "Profile",
+        "My profile",
+        "Account settings",
+        "Update profile"
+      ],
+      "responses": [
+        "Your ParkShare Account:\n\n👤 Name: $user-name\n📧 Email: $user-email\n📱 Phone: $user-phone\n🎭 Role: $user-role\n\nWhat would you like to update?\n- Email\n- Phone\n- Password\n- Role (switch to Driver/Host)",
+        "Account Information:\n\nUser ID: $user-id\nName: $user-name\nEmail: $user-email\nMember since: $join-date\n\nTo update your profile, visit Settings or tell me what you'd like to change.",
+        "Profile Overview:\n\n$user-name\n$user-email\n$user-role\n\nManage your account settings or switch roles anytime!"
+      ],
+      "contexts": {
+        "output": ["account-info"]
+      }
+    },
+    {
+      "name": "SwitchRole",
+      "priority": 2,
+      "trainingPhrases": [
+        "Switch to host",
+        "Switch to driver",
+        "Change role",
+        "I want to be a driver and host",
+        "Become a driver",
+        "Switch role"
+      ],
+      "responses": [
+        "You can be both a driver and a host! 🎭\n\nWhat would you like to do?\n1. Switch to Driver mode\n2. Switch to Host mode\n3. Enable both roles\n\nChoose an option:",
+        "Role switching is easy! You can:\n\n🚗 Use ParkShare as a Driver (find parking)\n🏠 Use ParkShare as a Host (rent your space)\n\nBoth roles are available on your account. Which dashboard would you like to access?",
+        "Perfect! Would you like to:\n\nA) Access Driver features\nB) Access Host features\nC) Keep both active\n\nYou can switch anytime!"
+      ],
+      "contexts": {
+        "output": ["switching-role"]
+      },
+      "action": "switchRole"
+    },
+    {
+      "name": "Goodbye",
+      "priority": 1,
+      "trainingPhrases": [
+        "bye",
+        "goodbye",
+        "see you",
+        "thanks",
+        "thank you",
+        "that's all",
+        "nothing else",
+        "no thanks"
+      ],
+      "responses": [
+        "You're welcome! Happy parking with ParkShare! 🚗 Feel free to ask me anything anytime.",
+        "Glad I could help! Safe travels and happy parking! 🅿️",
+        "Thank you for using ParkShare! Drive safe! 🚙",
+        "Goodbye! Don't hesitate to reach out if you need anything. Have a great day! 👋"
+      ]
+    }
+  ]
+}
+
+
+

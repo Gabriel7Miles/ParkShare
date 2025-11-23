@@ -32,7 +32,7 @@ export function cleanFirestoreData<T extends Record<string, any>>(data: T): Part
   return clean;
 }
 
-export async function getHostSpaces(db: Firestore, hostId: string, setSpaces: (spaces: ParkingSpace[]) => void): Promise<void> {
+export async function getHostSpaces(db: Firestore, hostId: string, setSpaces: (spaces: ParkingSpace[]) => void): Promise<(() => void) | undefined> {
   try {
     console.log('[v0] Setting up real-time listener for host spaces:', hostId);
     const spacesRef = collection(db, "parkingSpaces");
