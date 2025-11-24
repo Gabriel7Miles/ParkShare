@@ -125,6 +125,43 @@ export default function HostBookings() {
                       </div>
                     </div>
 
+                    {/* Car Details */}
+                    {booking.carDetails && (
+                      <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                        <h4 className="font-semibold text-sm">Vehicle Information</h4>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Color: </span>
+                            <span className="font-medium">{booking.carDetails.color}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Plate: </span>
+                            <span className="font-medium">{booking.carDetails.numberPlate}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Ownership: </span>
+                            <span className="font-medium capitalize">{booking.carDetails.ownershipType}</span>
+                          </div>
+                          {booking.carDetails.make && (
+                            <div>
+                              <span className="text-muted-foreground">Make/Model: </span>
+                              <span className="font-medium">
+                                {booking.carDetails.make}
+                                {booking.carDetails.model && ` ${booking.carDetails.model}`}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="pt-2">
+                          <Badge variant="outline">Spot {booking.spotLabel}</Badge>
+                        </div>
+                        <div className="pt-2 text-sm">
+                          <span className="text-muted-foreground">Driver: </span>
+                          <span className="font-medium">{booking.driverName || "Unknown"}</span>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between pt-4 border-t">
                       <div className="flex items-center gap-2">
                         <DollarSign className="w-5 h-5 text-success" />

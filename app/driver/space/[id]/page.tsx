@@ -1,343 +1,300 @@
-"use client"
+"use client";
 
-import { useEffect, useState, useCallback } from "react"
-import { useParams } from "next/navigation"
-import { DriverDashboardNav } from "@/components/driver/dashboard-nav"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
-import { getParkingSpaceById } from "@/lib/firebase/parking"
-import { getSpaceReviews, getReviewStats, createReview } from "@/lib/firebase/reviews"
-import type { ParkingSpace } from "@/lib/types/parking"
-import type { Review, ReviewStats } from "@/lib/types/review"
-import { MapPin, DollarSign, Star, Loader2, ArrowLeft, Send, Navigation } from "lucide-react"
-import { ReviewList } from "@/components/reviews/review-list"
-import { ReviewStatsCard } from "@/components/reviews/review-stats"
-import Link from "next/link"
-import { useAuth } from "@/contexts/auth-context"
-import { useToast } from "@/hooks/use-toast"
-import { useFirebase } from "@/contexts/firebase-context"
+import { useEffect, useState, useCallback } from "react";
+import { useParams } from "next/navigation";
+import { DriverDashboardNav } from "@/components/driver/dashboard-nav";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { MapPin, DollarSign, Star, Loader2, ArrowLeft, Send, Navigation } from "lucide-react";
+import Link from "next/link";
 
-export default function SpaceDetailsPage() {
-  const params = useParams()
-  const { db } = useFirebase()
-  const [space, setSpace] = useState<ParkingSpace | null>(null)
-  const [reviews, setReviews] = useState<Review[]>([])
-  const [stats, setStats] = useState<ReviewStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [rating, setRating] = useState(0)
-  const [comment, setComment] = useState("")
-  const [submitting, setSubmitting] = useState(false)
-  const { user, userProfile } = useAuth()
-  const { toast } = useToast()
+import { getParkingSpaceById } from "@/lib/firebase/parking";
+import { getSpaceReviews, getReviewStats, createReview } from "@/lib/firebase/reviews";
+import type { ParkingSpace } from "@/lib/types/parking";
+import type { Review, ReviewStats } from "@/lib/types/review";
+
+import { ReviewList } from "@/components/reviews/review-list";
+import { ReviewStatsCard } from "@/components/reviews/review-stats";
+import { useAuth } from "@/contexts/auth-context";
+import { useToast } from "@/hooks/use-toast";
+import { useFirebase } from "@/contexts/firebase-context";
+
+function SpaceDetailsPage() {
+  const params = useParams();
+  const { db } = useFirebase();
+  const { user, userProfile } = useAuth();
+  const { toast } = useToast();
+
+  const [space, setSpace] = useState<ParkingSpace | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [stats, setStats] = useState<ReviewStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const spaceId = params.id as string;
 
   const loadSpaceDetails = useCallback(async () => {
-    if (!db) {
-      console.error("[Space Details] Firestore not initialized")
-      setLoading(false)
+    if (!db || !spaceId) {
       toast({
         title: "Error",
-        description: "Firestore not initialized. Please refresh the page.",
+        description: "Missing Firestore instance or space ID",
         variant: "destructive",
-      })
-      return
+      });
+      setLoading(false);
+      return;
     }
 
-    const id = params.id as string | undefined
-    if (!id) {
-      console.error("[Space Details] Invalid or undefined space ID:", params.id)
-      setLoading(false)
-      toast({
-        title: "Error",
-        description: "Invalid space ID",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setLoading(true)
+    setLoading(true);
     try {
-      const spaceData = await getParkingSpaceById(db, id)
+      const spaceData = await getParkingSpaceById(db, spaceId);
       if (!spaceData) {
-        console.warn("[Space Details] Space not found for ID:", id)
-        setLoading(false)
-        return
+        toast({ title: "Not Found", description: "Parking space not found", variant: "destructive" });
+        setLoading(false);
+        return;
       }
-      setSpace(spaceData)
+      setSpace(spaceData);
 
-      try {
-        const reviewsData = await getSpaceReviews(db, id)
-        const statsData = await getReviewStats(db, id)
-        setReviews(reviewsData)
-        setStats(statsData)
-      } catch (reviewError) {
-        console.warn("[Space Details] Unable to load reviews or stats:", reviewError)
-      }
-    } catch (error) {
-      console.error("[Space Details] Error loading space details:", error)
+      const [reviewsData, statsData] = await Promise.all([
+        getSpaceReviews(db, spaceId).catch(() => []),
+        getReviewStats(db, spaceId).catch(() => null),
+      ]);
+      setReviews(reviewsData);
+      setStats(statsData);
+    } catch (err) {
+      console.error("[SpaceDetails] Load error:", err);
       toast({
         title: "Error",
-        description: "Failed to load space details. Please try again.",
+        description: "Failed to load space details",
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [db, params.id, toast])
+  }, [db, spaceId, toast]);
 
   useEffect(() => {
-    loadSpaceDetails()
-  }, [loadSpaceDetails])
+    loadSpaceDetails();
+  }, [loadSpaceDetails]);
 
   const handleSubmitReview = async () => {
-    if (!user || !userProfile || rating === 0) {
-      toast({
-        title: "Error",
-        description: "Please select a rating",
-        variant: "destructive",
-      })
-      return
+    if (!user || rating === 0) {
+      toast({ title: "Required", description: "Please select a rating", variant: "destructive" });
+      return;
     }
 
-    if (!db || !params.id) {
-      toast({
-        title: "Error",
-        description: "Firestore or space ID not available",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setSubmitting(true)
+    setSubmitting(true);
     try {
-      await createReview(db, {
-        spaceId: params.id as string,
+      await createReview(db!, {
+        spaceId,
         driverId: user.uid,
-        driverName: userProfile.displayName || "Anonymous",
+        driverName: userProfile?.displayName || "Anonymous",
         hostId: space?.hostId || "",
-        bookingId: "",
+        bookingId: "", // can be filled later if needed
         rating,
         comment,
-      })
+      });
 
-      toast({
-        title: "Review submitted!",
-        description: "Thank you for your feedback",
-      })
-
-      setRating(0)
-      setComment("")
-      await loadSpaceDetails()
-    } catch (error: any) {
+      toast({ title: "Success", description: "Review submitted!" });
+      setRating(0);
+      setComment("");
+      await loadSpaceDetails();
+    } catch (err: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to submit review",
+        description: err.message || "Failed to submit review",
         variant: "destructive",
-      })
+      });
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
+  // ─── Loading State ───
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
         <DriverDashboardNav />
         <div className="pt-16 flex items-center justify-center h-96">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <Loader2 className="w-10 h-10 animate-spin text-primary" />
         </div>
       </div>
-    )
+    );
   }
 
+  // ─── Not Found ───
   if (!space) {
     return (
       <div className="min-h-screen bg-background">
         <DriverDashboardNav />
-        <div className="pt-16 container mx-auto p-4">
-          <p>Space not found</p>
+        <div className="pt-16 container mx-auto p-6 text-center">
+          <p className="text-xl mb-4">Parking space not found</p>
           <Link href="/driver/dashboard">
-            <Button variant="ghost" className="mt-4 gap-2">
-              <ArrowLeft className="w-4 h-4" />
+            <Button variant="outline">
+              <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Dashboard
             </Button>
           </Link>
         </div>
       </div>
-    )
+    );
   }
 
+  // ─── Main Render ───
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="min-h-screen bg-background pb-12">
       <DriverDashboardNav />
 
-      <div className="pt-16">
-        <div className="container mx-auto p-4 max-w-4xl">
-          <Link href="/driver/dashboard">
-            <Button variant="ghost" className="mb-6 gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Search
-            </Button>
-          </Link>
+      <div className="pt-16 container mx-auto p-4 max-w-5xl">
+        <Link href="/driver/dashboard">
+          <Button variant="ghost" className="mb-6">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Search
+          </Button>
+        </Link>
 
-          <div className="space-y-6">
-            {/* Space Images */}
-            {space.images && space.images.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {space.images.map((image, index) => (
-                  <img
-                    key={index}
-                    src={image || "/placeholder.svg?height=300&width=400"}
-                    alt={`${space.title} - Image ${index + 1}`}
-                    className="w-full h-64 object-cover rounded-lg"
-                  />
+        <div className="space-y-8">
+          {/* Images */}
+          {space.images?.length ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl overflow-hidden">
+              {space.images.map((url, i) => (
+                <img key={i} src={url} alt={`Image ${i + 1}`} className="w-full h-64 object-cover" />
+              ))}
+            </div>
+          ) : null}
+
+          {/* Details Card */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between mb-4 flex-wrap gap-4">
+                <div className="flex-1">
+                  <h1 className="text-3xl font-bold mb-2">{space.title}</h1>
+                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                    <MapPin className="w-4 h-4" />
+                    {space.address}
+                  </div>
+
+                  {/* RESTORED: View host profile link */}
+                  {space.hostId && (
+                    <Link href={`/host/profile/${space.hostId}`} className="text-sm">
+                      <Button variant="link" className="h-auto p-0 text-primary hover:underline">
+                        View host profile →
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+                <Badge className="bg-green-600 text-white">Available</Badge>
+              </div>
+
+              <div className="flex items-center gap-4 my-4">
+                <div className="flex items-center gap-1">
+                  <Star className="w-5 h-5 fill-yellow-500 text-yellow-500" />
+                  <span className="font-semibold">{space.rating.toFixed(1)}</span>
+                  <span className="text-sm text-muted-foreground">({space.reviewCount || 0})</span>
+                </div>
+                <Badge variant="outline">{space.spaceType}</Badge>
+              </div>
+
+              <p className="text-muted-foreground mb-6">{space.description}</p>
+
+              <div className="flex flex-wrap gap-2 mb-6">
+                {space.features?.map((f) => (
+                  <Badge key={f} variant="secondary">{f}</Badge>
                 ))}
               </div>
-            )}
 
-            {/* Space Details */}
+              <div className="flex justify-between items-end border-t pt-6">
+                <div>
+                  <p className="text-3xl font-bold text-primary">KES {space.pricePerHour}/hr</p>
+                  {space.pricePerDay && <p className="text-muted-foreground">KES {space.pricePerDay}/day</p>}
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() =>
+                      window.open(
+                        `https://www.google.com/maps/dir/?api=1&destination=${space.location.lat},${space.location.lng}`,
+                        "_blank"
+                      )
+                    }
+                  >
+                    <Navigation className="w-4 h-4 mr-2" />
+                    Directions
+                  </Button>
+                  <Button size="lg" className="bg-green-600 hover:bg-green-700">
+                    Book Now
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Review Stats */}
+          {stats && <ReviewStatsCard stats={stats} />}
+
+          {/* Submit Review */}
+          {user && userProfile?.roles?.includes("driver") && (
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4 flex-wrap gap-4">
-                  <div className="flex-1">
-                    <h1 className="text-3xl font-bold mb-2 font-sans">{space.title}</h1>
-                    <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                      <MapPin className="w-4 h-4" />
-                      {space.address}
-                    </div>
-                    {space.hostId && (
-                      <Link href={`/host/profile/${space.hostId}`}>
-                        <Button variant="link" className="px-0 h-auto text-sm text-primary hover:underline">
-                          View host profile →
-                        </Button>
-                      </Link>
-                    )}
-                  </div>
-                  <Badge className="bg-success">Available</Badge>
-                </div>
-
-                <div className="flex items-center gap-4 mb-6 flex-wrap">
-                  <div className="flex items-center gap-1">
-                    <Star className="w-5 h-5 fill-accent text-accent" />
-                    <span className="font-semibold">{space.rating.toFixed(1)}</span>
-                    <span className="text-sm text-muted-foreground">({space.reviewCount || 0} reviews)</span>
-                  </div>
-                  <Badge variant="outline">{space.spaceType}</Badge>
-                  {space.totalSpots && <Badge variant="secondary">{space.totalSpots} spaces available</Badge>}
-                </div>
-
-                <p className="text-muted-foreground mb-6 leading-relaxed">{space.description}</p>
-
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {space.features.map((feature, index) => (
-                    <Badge key={index} variant="secondary">
-                      {feature}
-                    </Badge>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between pt-6 border-t flex-wrap gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <DollarSign className="w-6 h-6 text-primary" />
-                      <span className="text-3xl font-bold text-primary">KES {space.pricePerHour}/hr</span>
-                    </div>
-                    {space.pricePerDay && <p className="text-sm text-muted-foreground">KES {space.pricePerDay}/day</p>}
-                    {space.pricePerMonth && (
-                      <p className="text-sm text-muted-foreground">KES {space.pricePerMonth}/month</p>
-                    )}
-                  </div>
-                  <div className="flex gap-3">
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => {
-                        const url = `https://www.google.com/maps/dir/?api=1&destination=${space.location.lat},${space.location.lng}`
-                        window.open(url, "_blank")
-                      }}
-                    >
-                      <Navigation className="w-4 h-4" />
-                      Get Directions
-                    </Button>
-                    <Button size="lg" className="bg-success hover:bg-success/90">
-                      Book Now
-                    </Button>
+              <CardHeader>
+                <CardTitle>Leave a Review</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <p className="font-medium mb-3">Your Rating</p>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((v) => (
+                      <button key={v} onClick={() => setRating(v)}>
+                        <Star
+                          className={`w-10 h-10 transition-all ${
+                            v <= rating ? "fill-yellow-500 text-yellow-500" : "text-gray-300"
+                          }`}
+                        />
+                      </button>
+                    ))}
                   </div>
                 </div>
+
+                <Textarea
+                  placeholder="Share your experience..."
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  rows={4}
+                />
+
+                <Button
+                  onClick={handleSubmitReview}
+                  disabled={submitting || rating === 0}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Submit Review
+                    </>
+                  )}
+                </Button>
               </CardContent>
             </Card>
+          )}
 
-            {/* Review Stats */}
-            {stats && <ReviewStatsCard stats={stats} />}
-
-            {/* Add Review */}
-            {user && userProfile?.roles?.includes("driver") && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Leave a Review</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium mb-2">Rating</p>
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => setRating(star)}
-                          className="transition-transform hover:scale-110"
-                        >
-                          <Star
-                            className={`w-8 h-8 ${
-                              star <= rating ? "fill-accent text-accent" : "text-muted-foreground"
-                            }`}
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-medium mb-2">Comment</p>
-                    <Textarea
-                      placeholder="Share your experience with this parking space..."
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                      rows={4}
-                    />
-                  </div>
-
-                  <Button
-                    onClick={handleSubmitReview}
-                    disabled={submitting || rating === 0}
-                    className="w-full bg-success hover:bg-success/90"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4 mr-2" />
-                        Submit Review
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Reviews List */}
-            <div>
-              <h2 className="text-2xl font-bold mb-4 font-sans">Reviews ({reviews.length})</h2>
-              <ReviewList reviews={reviews} onReviewUpdate={loadSpaceDetails} />
-            </div>
+          {/* Reviews List */}
+          <div>
+            <h2 className="text-2xl font-bold mb-6">Reviews ({reviews.length})</h2>
+            <ReviewList reviews={reviews} onReviewUpdate={loadSpaceDetails} />
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
+
+export default SpaceDetailsPage;

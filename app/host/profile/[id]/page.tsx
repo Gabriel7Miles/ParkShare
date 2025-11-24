@@ -75,19 +75,26 @@ export default function PublicHostProfilePage() {
 
       setHostProfile(profile)
 
-      // Fetch host's listings
+      // Fetch host's listings (all available spaces)
       try {
         const listingsQuery = query(
           collection(db, "parkingSpaces"),
-          where("hostId", "==", hostId),
-          where("status", "==", "active")
+          where("hostId", "==", hostId)
         )
         const listingsSnapshot = await getDocs(listingsQuery)
-        const listings = listingsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as ParkingSpace[]
-        setHostListings(listings)
+        const listings = listingsSnapshot.docs.map(doc => {
+          const data = doc.data()
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate() || new Date(data.createdAt),
+          }
+        }) as ParkingSpace[]
+        // Filter to only show available spaces
+        const availableListings = listings.filter(space => 
+          space.availability === "available" || space.availability === "reserved"
+        )
+        setHostListings(availableListings)
       } catch (listingsError) {
         console.warn("Failed to load listings:", listingsError)
       }
@@ -387,5 +394,6 @@ export default function PublicHostProfilePage() {
     </div>
   )
 }
+
 
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -11,6 +11,8 @@ import { useAuth } from "@/contexts/auth-context"
 import { useFirebase } from "@/contexts/firebase-context"
 import { createBooking } from "@/lib/firebase/parking"
 import { processPayment } from "@/lib/firebase/payment"
+import { createNotification } from "@/lib/firebase/notifications"
+import { removeFromCart } from "@/lib/utils/cart"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { PaymentForm } from "@/components/payment/payment-form"
@@ -21,14 +23,20 @@ interface BookingModalProps {
   space: ParkingSpace | null
   open: boolean
   onClose: () => void
+  preSelectedSpot?: string // Spot already selected from cart
+  preFilledData?: {
+    startDate: string
+    startTime: string
+    duration: string
+  }
 }
 
-export function BookingModal({ space, open, onClose }: BookingModalProps) {
+export function BookingModal({ space, open, onClose, preSelectedSpot, preFilledData }: BookingModalProps) {
   const [step, setStep] = useState<"details" | "payment" | "success">("details")
-  const [startDate, setStartDate] = useState("")
-  const [startTime, setStartTime] = useState("")
-  const [duration, setDuration] = useState("1")
-  const [selectedSpot, setSelectedSpot] = useState("")
+  const [startDate, setStartDate] = useState(preFilledData?.startDate || "")
+  const [startTime, setStartTime] = useState(preFilledData?.startTime || "")
+  const [duration, setDuration] = useState(preFilledData?.duration || "1")
+  const [selectedSpot, setSelectedSpot] = useState(preSelectedSpot || "")
   
   // Car details
   const [carColor, setCarColor] = useState("")
@@ -46,13 +54,15 @@ export function BookingModal({ space, open, onClose }: BookingModalProps) {
 
   if (!space) return null
 
-  // Redirect to signup if user is not authenticated
-  if (open && !user) {
+  // If spot is pre-selected, we're coming from cart (user should be authenticated)
+  // But we'll still check and show a message if not
+  if (open && !user && preSelectedSpot) {
     toast({
       title: "Sign in required",
-      description: "Please sign in or create an account to book parking",
+      description: "Please sign in to complete your booking",
+      variant: "destructive",
     })
-    router.push(`/signup?redirect=/&bookSpace=${space.id}`)
+    router.push(`/login?redirect=/cart`)
     onClose()
     return null
   }
@@ -147,6 +157,22 @@ export function BookingModal({ space, open, onClose }: BookingModalProps) {
         `BOOKING-${bookingId.substring(0, 8)}`,
       )
 
+      // Send notification to host
+      await createNotification(
+        db,
+        space.hostId,
+        "booking_created",
+        "New Booking Request",
+        `${userProfile?.displayName || "A driver"} has requested to book spot ${selectedSpot} at ${space.title}.`,
+        bookingId,
+        space.id
+      )
+
+      // Remove from cart if it was there
+      if (preSelectedSpot) {
+        removeFromCart(space.id, selectedSpot)
+      }
+
       toast({
         title: "Payment initiated",
         description: "Please check your phone and enter your M-Pesa PIN to complete the payment",
@@ -180,10 +206,14 @@ export function BookingModal({ space, open, onClose }: BookingModalProps) {
 
   const handleClose = () => {
     setStep("details")
-    setStartDate("")
-    setStartTime("")
-    setDuration("1")
-    setSelectedSpot("")
+    if (!preFilledData) {
+      setStartDate("")
+      setStartTime("")
+      setDuration("1")
+    }
+    if (!preSelectedSpot) {
+      setSelectedSpot("")
+    }
     setCarColor("")
     setNumberPlate("")
     setOwnershipType("personal")
@@ -192,6 +222,18 @@ export function BookingModal({ space, open, onClose }: BookingModalProps) {
     setCurrentBooking(null)
     onClose()
   }
+
+  // Update form when pre-filled data changes
+  useEffect(() => {
+    if (preFilledData) {
+      setStartDate(preFilledData.startDate)
+      setStartTime(preFilledData.startTime)
+      setDuration(preFilledData.duration)
+    }
+    if (preSelectedSpot) {
+      setSelectedSpot(preSelectedSpot)
+    }
+  }, [preFilledData, preSelectedSpot])
   
   const availableSpots = getAvailableSpots()
 
@@ -276,25 +318,41 @@ export function BookingModal({ space, open, onClose }: BookingModalProps) {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="spot">Select Parking Spot *</Label>
-                <select
-                  id="spot"
-                  value={selectedSpot}
-                  onChange={(e) => setSelectedSpot(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Choose a spot...</option>
-                  {availableSpots.map((spot) => (
-                    <option key={spot.label} value={spot.label}>
-                      Spot {spot.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground">
-                  {availableSpots.length} spot(s) available
-                </p>
-              </div>
+              {/* Only show spot selection if not pre-selected */}
+              {!preSelectedSpot && (
+                <div className="space-y-2">
+                  <Label htmlFor="spot">Select Parking Spot *</Label>
+                  <select
+                    id="spot"
+                    value={selectedSpot}
+                    onChange={(e) => setSelectedSpot(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Choose a spot...</option>
+                    {availableSpots.map((spot) => (
+                      <option key={spot.label} value={spot.label}>
+                        Spot {spot.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    {availableSpots.length} spot(s) available
+                  </p>
+                </div>
+              )}
+
+              {/* Show selected spot if pre-selected */}
+              {preSelectedSpot && (
+                <div className="space-y-2">
+                  <Label>Selected Parking Spot</Label>
+                  <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                    <div className="font-semibold">Spot {preSelectedSpot}</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      This spot is reserved in your cart
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="border-t pt-6 space-y-6">
                 <h3 className="font-semibold text-lg">Vehicle Details</h3>

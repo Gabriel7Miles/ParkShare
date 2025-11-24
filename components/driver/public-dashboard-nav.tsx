@@ -3,12 +3,14 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Car, MapPin, Calendar, User, LogOut, MessageSquare, Menu, Home as HomeIcon } from "lucide-react"
+import { Car, MapPin, Calendar, User, LogOut, MessageSquare, Menu, Home as HomeIcon, ShoppingCart } from "lucide-react"
 import { signOut } from "@/lib/firebase/auth"
 import { useAuth } from "@/contexts/auth-context"
 import { useFirebase } from "@/contexts/firebase-context"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { getCart } from "@/lib/utils/cart"
+import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +26,25 @@ export function PublicDashboardNav() {
   const { user, userProfile } = useAuth()
   const { auth } = useFirebase()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [cartItemCount, setCartItemCount] = useState(0)
+
+  // Update cart count when cart changes
+  useEffect(() => {
+    const updateCartCount = () => {
+      const cart = getCart()
+      setCartItemCount(cart.items.length)
+    }
+    
+    updateCartCount()
+    // Listen for cart updates
+    const interval = setInterval(updateCartCount, 1000)
+    window.addEventListener('storage', updateCartCount)
+    
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('storage', updateCartCount)
+    }
+  }, [])
 
   const handleSignOut = async () => {
     if (auth) {
@@ -72,6 +93,21 @@ export function PublicDashboardNav() {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
+            {/* Cart Icon */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              onClick={() => router.push("/cart")}
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {cartItemCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                  {cartItemCount}
+                </Badge>
+              )}
+            </Button>
+            
             {user ? (
               <>
                 <DropdownMenu>
@@ -121,7 +157,22 @@ export function PublicDashboardNav() {
           </div>
 
           {/* Mobile Menu */}
-          <div className="flex md:hidden">
+          <div className="flex md:hidden items-center gap-2">
+            {/* Cart Icon for Mobile */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              onClick={() => router.push("/cart")}
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {cartItemCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                  {cartItemCount}
+                </Badge>
+              )}
+            </Button>
+            
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -142,6 +193,19 @@ export function PublicDashboardNav() {
                       </div>
 
                       <div className="flex-1 space-y-2">
+                        {/* Cart Link in Mobile Menu */}
+                        <Button
+                          variant={pathname === "/cart" ? "default" : "ghost"}
+                          className="w-full justify-start gap-3"
+                          onClick={() => {
+                            setMobileMenuOpen(false)
+                            router.push("/cart")
+                          }}
+                        >
+                          <ShoppingCart className="w-5 h-5" />
+                          Cart {cartItemCount > 0 && `(${cartItemCount})`}
+                        </Button>
+                        
                         {navItems.map((item) => (
                           <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)}>
                             <Button
@@ -179,6 +243,19 @@ export function PublicDashboardNav() {
                     </>
                   ) : (
                     <div className="space-y-3">
+                      {/* Cart Link for non-authenticated users */}
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-3"
+                        onClick={() => {
+                          setMobileMenuOpen(false)
+                          router.push("/cart")
+                        }}
+                      >
+                        <ShoppingCart className="w-5 h-5" />
+                        Cart {cartItemCount > 0 && `(${cartItemCount})`}
+                      </Button>
+                      
                       <Button
                         className="w-full"
                         onClick={() => {
@@ -209,5 +286,6 @@ export function PublicDashboardNav() {
     </nav>
   )
 }
+
 
 

@@ -124,13 +124,19 @@ export async function getUserBookings(db: Firestore, userId: string): Promise<Bo
   try {
     console.log('[Parking] Fetching bookings for user:', userId);
     const bookingsRef = collection(db, "bookings");
-    const q = query(bookingsRef, where("driverId", "==", userId));
+    const q = query(bookingsRef, where("driverId", "==", userId), orderBy("createdAt", "desc"));
     const snapshot = await getDocs(q);
 
-    const bookings = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Booking[];
+    const bookings = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        startTime: data.startTime?.toDate() || new Date(data.startTime),
+        endTime: data.endTime?.toDate() || new Date(data.endTime),
+        createdAt: data.createdAt?.toDate() || new Date(data.createdAt),
+      };
+    }) as Booking[];
 
     console.log('[Parking] Found', bookings.length, 'bookings for user', userId);
     return bookings;

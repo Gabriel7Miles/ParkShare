@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { getUserBookings } from "@/lib/firebase/parking"
 import type { Booking } from "@/lib/types/parking"
 import { useAuth } from "@/contexts/auth-context"
-import { Calendar, Clock, DollarSign, Loader2, Star } from "lucide-react"
+import { useFirebase } from "@/contexts/firebase-context"
+import { Calendar, Clock, DollarSign, Loader2, Star, Car } from "lucide-react"
 import { format } from "date-fns"
 import { ReviewForm } from "@/components/reviews/review-form"
 
@@ -18,18 +19,19 @@ export default function DriverBookings() {
   const [loading, setLoading] = useState(true)
   const [reviewBooking, setReviewBooking] = useState<Booking | null>(null)
   const { user } = useAuth()
+  const { db } = useFirebase()
 
   useEffect(() => {
-    if (user) {
+    if (user && db) {
       loadBookings()
     }
-  }, [user])
+  }, [user, db])
 
   const loadBookings = async () => {
-    if (!user) return
+    if (!user || !db) return
     setLoading(true)
     try {
-      const userBookings = await getUserBookings(user.uid)
+      const userBookings = await getUserBookings(db, user.uid)
       setBookings(userBookings)
     } catch (error) {
       console.error("[v0] Error loading bookings:", error)
@@ -107,6 +109,39 @@ export default function DriverBookings() {
                         </span>
                       </div>
                     </div>
+
+                    {/* Car Details */}
+                    {booking.carDetails && (
+                      <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                        <h4 className="font-semibold text-sm">Vehicle Information</h4>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Color: </span>
+                            <span className="font-medium">{booking.carDetails.color}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Plate: </span>
+                            <span className="font-medium">{booking.carDetails.numberPlate}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Ownership: </span>
+                            <span className="font-medium capitalize">{booking.carDetails.ownershipType}</span>
+                          </div>
+                          {booking.carDetails.make && (
+                            <div>
+                              <span className="text-muted-foreground">Make/Model: </span>
+                              <span className="font-medium">
+                                {booking.carDetails.make}
+                                {booking.carDetails.model && ` ${booking.carDetails.model}`}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="pt-2">
+                          <Badge variant="outline">Spot {booking.spotLabel}</Badge>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between pt-4 border-t">
                       <div className="flex items-center gap-2">

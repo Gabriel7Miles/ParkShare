@@ -33,6 +33,9 @@ export interface ParkingSpace {
   }[]
   totalSpots: number // Total number of parking spots in this listing
   spots: ParkingSpot[] // Individual spot details with labels
+  // M-Pesa Payment Details
+  mpesaPaymentMethod?: "send_money" | "paybill" | "buy_goods" | "pochi_la_biashara"
+  mpesaAccountDetails?: string // Phone number for send_money, account number for paybill/buy_goods/pochi_la_biashara
   createdAt: Date
 }
 

@@ -18,8 +18,8 @@ service cloud.firestore {
     
     // ===== USER PROFILES =====
     match /users/{userId} {
-      // Read: Owner can read their own profile, or anyone can read public profile data
-      allow read: if isAuthenticated();
+      // Read: Anyone can read user profiles (for public host profiles)
+      allow read: if true;
       
       // Create: User can create their own profile with required fields
       allow create: if isOwner(userId)
@@ -64,40 +64,42 @@ service cloud.firestore {
         && request.resource.data.images is list;
       
       // Update: Host can update their own spaces, or system can update ratings/spots
-      allow update: if isAuthenticated()
-        && (
-          // Host updating their own space (with optional image validation)
-          (resource.data.hostId == request.auth.uid
-            && (
-              // If updating images, must have 1-5 images
-              !request.resource.data.diff(resource.data).affectedKeys().hasAny(['images'])
-              || (
-                request.resource.data.images.size() >= 1
-                && request.resource.data.images.size() <= 5
-              )
+      // Also allow spot reservations (for cart functionality) and auto-release
+      allow update: if (
+        // Host updating their own space (with optional image validation)
+        (isAuthenticated()
+          && resource.data.hostId == request.auth.uid
+          && (
+            // If updating images, must have 1-5 images
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['images'])
+            || (
+              request.resource.data.images.size() >= 1
+              && request.resource.data.images.size() <= 5
             )
-          )
-          // OR system updating only ratings/reviewCount (from reviews)
-          || (
-            request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['rating', 'reviewCount', 'updatedAt'])
-            && request.resource.data.hostId == resource.data.hostId
-          )
-          // OR system updating spot availability (from bookings)
-          || (
-            request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['spots', 'availability', 'updatedAt'])
-            && request.resource.data.hostId == resource.data.hostId
-          )
-          // OR system adding images right after creation
-          || (
-            resource.data.hostId == request.auth.uid
-            && request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['images', 'updatedAt'])
-            && request.resource.data.images.size() >= 1
-            && request.resource.data.images.size() <= 5
-          )
-        );
+          ))
+        // OR system updating only ratings/reviewCount (from reviews)
+        || (
+          isAuthenticated()
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['rating', 'reviewCount', 'updatedAt'])
+          && request.resource.data.hostId == resource.data.hostId
+        )
+        // OR anyone updating spot availability (for cart reservations and auto-release)
+        || (
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['spots', 'availability', 'updatedAt'])
+          && request.resource.data.hostId == resource.data.hostId
+        )
+        // OR system adding images right after creation
+        || (
+          isAuthenticated()
+          && resource.data.hostId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['images', 'updatedAt'])
+          && request.resource.data.images.size() >= 1
+          && request.resource.data.images.size() <= 5
+        )
+      );
       
       // Delete: Only host can delete their own spaces
       allow delete: if isAuthenticated()
@@ -126,10 +128,20 @@ service cloud.firestore {
         && (resource.data.driverId == request.auth.uid
             || resource.data.hostId == request.auth.uid);
       
-      // Update: Driver or host can update booking status
-      allow update: if isAuthenticated()
-        && (resource.data.driverId == request.auth.uid
-            || resource.data.hostId == request.auth.uid);
+      // Update: Driver or host can update booking status, or system can auto-update expired bookings
+      allow update: if (
+        // Driver or host updating their own booking
+        (isAuthenticated()
+          && (resource.data.driverId == request.auth.uid
+              || resource.data.hostId == request.auth.uid))
+        // OR system auto-updating expired bookings (status to completed)
+        || (
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'updatedAt'])
+          && request.resource.data.status == 'completed'
+          && resource.data.status in ['confirmed', 'active']
+        )
+      );
       
       // Delete: Only driver can cancel/delete their booking
       allow delete: if isAuthenticated()
@@ -176,6 +188,26 @@ service cloud.firestore {
       
       // Update/Delete: System only
       allow update, delete: if false;
+    }
+
+    // ===== NOTIFICATIONS =====
+    match /notifications/{notificationId} {
+      // Create: System can create notifications for users
+      allow create: if true;
+      
+      // Read: User can read their own notifications
+      allow read: if isAuthenticated()
+        && resource.data.userId == request.auth.uid;
+      
+      // Update: User can mark their own notifications as read
+      allow update: if isAuthenticated()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['read']);
+      
+      // Delete: User can delete their own notifications
+      allow delete: if isAuthenticated()
+        && resource.data.userId == request.auth.uid;
     }
   }
 }

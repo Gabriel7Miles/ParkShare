@@ -37,6 +37,8 @@ export function AddSpaceForm() {
     features: [] as string[],
     vehicleTypes: [] as string[],
     totalSpots: "1",
+    mpesaPaymentMethod: "" as "" | "send_money" | "paybill" | "buy_goods" | "pochi_la_biashara",
+    mpesaAccountDetails: "",
   })
   
   const [spotLabels, setSpotLabels] = useState<string[]>(["1"])
@@ -240,6 +242,15 @@ export function AddSpaceForm() {
       return
     }
 
+    if (!formData.mpesaPaymentMethod || !formData.mpesaAccountDetails) {
+      toast({
+        title: "Payment Details Required",
+        description: "Please configure your M-Pesa payment details",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
     try {
       console.log('[v0] Form validation passed, submitting...')
@@ -283,6 +294,8 @@ export function AddSpaceForm() {
         ...(formData.pricePerDay && { pricePerDay: Number.parseFloat(formData.pricePerDay) }),
         ...(formData.pricePerMonth && { pricePerMonth: Number.parseFloat(formData.pricePerMonth) }),
         ...(availableDates.length > 0 && { availableDates }),
+        ...(formData.mpesaPaymentMethod && { mpesaPaymentMethod: formData.mpesaPaymentMethod }),
+        ...(formData.mpesaAccountDetails && { mpesaAccountDetails: formData.mpesaAccountDetails }),
       }
 
       const spaceData = { ...baseData, ...optionalFields } as Omit<ParkingSpace, "id" | "createdAt"> & { images: File[] }
@@ -320,6 +333,8 @@ export function AddSpaceForm() {
         features: [],
         vehicleTypes: [],
         totalSpots: "1",
+        mpesaPaymentMethod: "",
+        mpesaAccountDetails: "",
       })
       setSpotLabels(["1"])
       setSelectedFiles([])
@@ -638,6 +653,64 @@ export function AddSpaceForm() {
               Add Another Date Range
             </Button>
           </div>
+
+          {/* M-Pesa Payment Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle>M-Pesa Payment Details</CardTitle>
+              <CardDescription>
+                Configure where payments from drivers will be sent
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="mpesaPaymentMethod">Payment Method *</Label>
+                <Select
+                  value={formData.mpesaPaymentMethod}
+                  onValueChange={(value) => setFormData({ ...formData, mpesaPaymentMethod: value as any, mpesaAccountDetails: "" })}
+                >
+                  <SelectTrigger id="mpesaPaymentMethod">
+                    <SelectValue placeholder="Select payment method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="send_money">Send Money (Phone Number)</SelectItem>
+                    <SelectItem value="paybill">Paybill</SelectItem>
+                    <SelectItem value="buy_goods">Buy Goods and Services</SelectItem>
+                    <SelectItem value="pochi_la_biashara">Pochi La Biashara</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {formData.mpesaPaymentMethod && (
+                <div className="space-y-2">
+                  <Label htmlFor="mpesaAccountDetails">
+                    {formData.mpesaPaymentMethod === "send_money" && "Phone Number *"}
+                    {formData.mpesaPaymentMethod === "paybill" && "Paybill Number *"}
+                    {formData.mpesaPaymentMethod === "buy_goods" && "Till Number *"}
+                    {formData.mpesaPaymentMethod === "pochi_la_biashara" && "Business Number *"}
+                  </Label>
+                  <Input
+                    id="mpesaAccountDetails"
+                    type="text"
+                    placeholder={
+                      formData.mpesaPaymentMethod === "send_money" ? "e.g., 254712345678"
+                      : formData.mpesaPaymentMethod === "paybill" ? "e.g., 123456"
+                      : formData.mpesaPaymentMethod === "buy_goods" ? "e.g., 123456"
+                      : "e.g., 123456"
+                    }
+                    value={formData.mpesaAccountDetails}
+                    onChange={(e) => setFormData({ ...formData, mpesaAccountDetails: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {formData.mpesaPaymentMethod === "send_money" && "Enter your M-Pesa registered phone number"}
+                    {formData.mpesaPaymentMethod === "paybill" && "Enter your Paybill account number"}
+                    {formData.mpesaPaymentMethod === "buy_goods" && "Enter your Buy Goods and Services till number"}
+                    {formData.mpesaPaymentMethod === "pochi_la_biashara" && "Enter your Pochi La Biashara business number"}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="outline" className="flex-1 bg-transparent" onClick={() => router.back()}>

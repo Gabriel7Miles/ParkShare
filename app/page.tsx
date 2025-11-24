@@ -5,11 +5,13 @@ import { PublicDashboardNav } from "@/components/driver/public-dashboard-nav"
 import { SearchBar, type FilterOptions } from "@/components/driver/search-bar"
 import { MapView } from "@/components/driver/map-view"
 import { BookingModal } from "@/components/driver/booking-modal"
+import { SpotSelectionModal } from "@/components/driver/spot-selection-modal"
 import type { ParkingSpace } from "@/lib/types/parking"
 import { useAuth } from "@/contexts/auth-context"
 import { useFirebase } from "@/contexts/firebase-context"
 import { getParkingSpaces, searchParkingSpaces } from "@/lib/firebase/parking"
 import { useRouter } from "next/navigation"
+import { setupAutoReleaseInterval } from "@/lib/firebase/auto-release"
 import { Loader2, AlertCircle, MapPin, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,6 +22,7 @@ export default function HomePage() {
   const [filteredSpaces, setFilteredSpaces] = useState<ParkingSpace[]>([])
   const [selectedSpace, setSelectedSpace] = useState<ParkingSpace | null>(null)
   const [bookingSpace, setBookingSpace] = useState<ParkingSpace | null>(null)
+  const [spotSelectionSpace, setSpotSelectionSpace] = useState<ParkingSpace | null>(null)
   const [loading, setLoading] = useState(true)
   const [mapError, setMapError] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
@@ -70,8 +73,15 @@ export default function HomePage() {
     window.addEventListener('space:created', handleSpaceCreated)
     window.addEventListener('focus', loadSpaces)
 
+    // Set up auto-release for expired bookings
+    let autoReleaseCleanup: (() => void) | undefined
+    if (db) {
+      autoReleaseCleanup = setupAutoReleaseInterval(db, 60000) // Check every minute
+    }
+
     return () => {
       if (unsubscribe) unsubscribe()
+      if (autoReleaseCleanup) autoReleaseCleanup()
       window.removeEventListener('space:created', handleSpaceCreated)
       window.removeEventListener('focus', loadSpaces)
     }
@@ -131,14 +141,11 @@ export default function HomePage() {
 
   const handleBookNow = (space: ParkingSpace) => {
     if (!user) {
-      // Redirect to signup if not authenticated
-      toast({
-        title: "Sign in required",
-        description: "Please sign in or create an account to book parking",
-      })
-      router.push(`/signup?redirect=/&bookSpace=${space.id}`)
+      // Show spot selection modal for non-authenticated users
+      setSpotSelectionSpace(space)
       return
     }
+    // Authenticated users go directly to booking modal
     setBookingSpace(space)
   }
 
@@ -301,6 +308,11 @@ export default function HomePage() {
         space={bookingSpace} 
         open={!!bookingSpace} 
         onClose={() => setBookingSpace(null)} 
+      />
+      <SpotSelectionModal
+        space={spotSelectionSpace}
+        open={!!spotSelectionSpace}
+        onClose={() => setSpotSelectionSpace(null)}
       />
     </div>
   )

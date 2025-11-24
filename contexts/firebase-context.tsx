@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app"
-import { getAuth, type Auth } from "firebase/auth"
+import { getAuth, setPersistence, browserLocalPersistence, type Auth } from "firebase/auth"
 import { getFirestore, type Firestore } from "firebase/firestore"
 import { getStorage, type FirebaseStorage } from "firebase/storage"
 import { Loader2 } from "lucide-react"
@@ -44,6 +44,10 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       try {
         const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig)
         const auth = getAuth(app)
+        
+        // Set persistent login (keeps user signed in until they manually log out)
+        await setPersistence(auth, browserLocalPersistence)
+        
         const db = getFirestore(app)
         const storage = getStorage(app)
 
@@ -55,7 +59,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
             storage,
             isInitialized: true,
           })
-          console.log("[v0] Firebase initialized successfully")
+          console.log("[v0] Firebase initialized successfully with persistent login")
           console.log("[v0] Firestore instance:", !!db)
           console.log("[v0] Storage instance:", !!storage)
         }
